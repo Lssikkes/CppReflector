@@ -6,10 +6,8 @@
 #include <ppl.h>
 #include <omp.h>
 
-// TODO: Anonymous type support
-// TODO: Template type support
-// TODO: Template definition support
-// TODO: Function pointer support
+// TODO: friend keyword
+// TODO: friend class keyword
 
 const int v=10;
 std::string readFromFile(std::string filename)
@@ -33,19 +31,22 @@ void Print(ASTNode* node, int level=0)
 
 	printf("%s * %s (%s)\n", padding, node->GetType().c_str(), allData.c_str());
 
-	for(auto it: node->children)
+	for(auto it: node->Children())
 		Print(it, level+1);
 }
+
+
 
 #include <windows.h>
 int main(int argc, char** argv)
 {	
 	int v;
-	StringTokenizer stokenizer(readFromFile("test2.xh"));
+	StringTokenizer stokenizer(readFromFile("test1.xh"));
 	ASTParser parser(stokenizer);
+	parser.Verbose = true;
 
 	//#pragma omp parallel for
-	for (int i = 0; i<1; i++)
+	for (int i = 0; i<10000; i++)
 	{
 		ASTNode root;
 

@@ -17,6 +17,10 @@ Token Tokenizer::PeekNextToken(int& offset)
 		token.TokenType = Token::Type::LBracket;
 	else if(token.TokenData.at(0) == ']')
 		token.TokenType = Token::Type::RBracket;
+	else if (token.TokenData.at(0) == '|')
+		token.TokenType = Token::Type::Pipe;
+	else if (token.TokenData.at(0) == '%')
+		token.TokenType = Token::Type::Percent;
 	else if(token.TokenData.at(0) == '{')
 		token.TokenType = Token::Type::LBrace;
 	else if(token.TokenData.at(0) == '}')
@@ -86,7 +90,7 @@ Token Tokenizer::PeekNextToken(int& offset)
 				next = PeekBytes(2, offset);
 			}
 		}
-		if(next == "/")
+		else if(next == "/")
 		{
 			token.TokenType = Token::Type::CommentSingleLine;
 
@@ -99,6 +103,8 @@ Token Tokenizer::PeekNextToken(int& offset)
 				next = PeekBytes(1, offset);
 			}
 		}
+		else 
+			token.TokenType = Token::Type::Slash;
 	}
 	else if(token.TokenData.at(0) == '\"' || token.TokenData.at(0) == '\'')
 	{
@@ -159,7 +165,7 @@ Token Tokenizer::PeekNextToken(int& offset)
 			next = PeekBytes(1, offset);
 		}
 	}
-	else if((token.TokenData.at(0) >= 'a' && token.TokenData.at(0) <= 'z') || (token.TokenData.at(0) >= 'A' && token.TokenData.at(0) <= 'Z') )
+	else if((token.TokenData.at(0) >= 'a' && token.TokenData.at(0) <= 'z') || (token.TokenData.at(0) >= 'A' && token.TokenData.at(0) <= 'Z') || token.TokenData.at(0) == '_' )
 	{
 		token.TokenType = Token::Type::Keyword;
 
@@ -267,6 +273,14 @@ void Tokenizer::ConvertToSpecializedKeyword( Token& token )
 		token.TokenType = Token::Type::Typedef;
 	else if (token.TokenData == "typename")
 		token.TokenType = Token::Type::Typename;
+	else if (token.TokenData == "namespace")
+		token.TokenType = Token::Type::Namespace;
+	else if (token.TokenData == "using")
+		token.TokenType = Token::Type::Using;
+	else if (token.TokenData == "__forceinline")
+		token.TokenType = Token::Type::ForceInline;
+	else if (token.TokenData == "struct")
+		token.TokenType = Token::Type::Struct;
 }
 
 

@@ -84,16 +84,22 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="astProcessor.cpp" />
     <ClCompile Include="astGenerator.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="tokenizer.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="test1.xh" />
+    <None Include="test1.xh">
+      <FileType>Document</FileType>
+    </None>
     <None Include="test2.xh" />
+    <None Include="test3.xh" />
     <None Include="testSelf.xh" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="ast.h" />
+    <ClInclude Include="astProcessor.h" />
     <ClInclude Include="astGenerator.h" />
     <ClInclude Include="tokenizer.h" />
   </ItemGroup>

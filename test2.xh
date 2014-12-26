@@ -1,1081 +1,330 @@
-#include "astGenerator.h"
-#include <memory>
-
-#define SUBTYPE_MODE_SUBVARIABLE 0
-#define SUBTYPE_MODE_SUBARGUMENT 1
-
-
-static std::string CombineTokens(ASTTokenSource* source, std::vector<ASTTokenIndex>& tokens, std::string joinSequence)
+class CVector3
 {
-	std::string combiner;
-	for(int i=0; i<static_cast<int>(tokens.size())-1; i++)
-	{
-		combiner += source->Tokens[tokens[i]].TokenData + joinSequence;
-	}
-	if(tokens.size() != 0)
-		combiner += source->Tokens[tokens.back()].TokenData;
+public:
+	float x,y,z;
+	float V[3];
 
-	return combiner;
-}
+	static CVector3 Zero;
 
-ASTParser::ASTParser( Tokenizer& fromTokenizer )
-{
-	int lineNumber=1;
-	Token token;
-	while(token.TokenType != Token::Type::EndOfStream)
-	{
-		token = fromTokenizer.GetNextToken();
-		token.TokenLine = lineNumber;
-		if(token.TokenType == Token::Type::Newline)
-		{
-			lineNumber++;
-		}
-		else
-		{
-			
-		}
-		Tokens.push_back(token);
-	}
-}
+	CVector3();
+	CVector3(float* XYZ);
+	CVector3(float X, float Y=0.0f, float Z=0.0f);
+	CVector3(bool DontInitialize) { }
 
-bool ASTParser::Parse( ASTNode* parent, ASTPosition& position)
-{
-	while(ParseRoot(parent, position)) 
-	{ 
+	__forceinline bool operator== (const CVector3& v2) const { if(x != v2.x) return false;  if(y != v2.y) return false; if(z != v2.z) return false; return true; /*return M3D_COMPAREFP(x, v2.x, 0.001) && M3D_COMPAREFP(y, v2.y, 0.001) && M3D_COMPAREFP(z, v2.z, 0.001);*/ }
+	__forceinline bool operator!= (const CVector3& v2) const { return !((*this) == v2); }
 
-	}
+	// for sorting/listing purposes.
+	bool operator< (const CVector3 &v) const;
 
-	return true;
-}
+	CVector3 operator / (const CVector3) const;
+	CVector3 operator * (const CVector3) const;
+	CVector3 operator + (const CVector3) const;
+	CVector3 operator - (const CVector3) const;
+	CVector3 operator- () const { return CVector3( -x, -y, -z ); }
 
-bool ASTParser::ParseRoot( ASTNode* parent, ASTPosition& position )
-{
-	if(ParseEndOfStream(parent, position))
-	{
-		return false; // EOF
-	}
-	else if(ParseEnum(parent, position))
-	{
-		return true;
-	}
-	else if(ParseClass(parent, position))
-	{
-		return true;
-	}
-	else if (ParseDeclaration(1, parent, position))
-	{
-		return true;
-	}
-	else if(ParseIgnored(parent, position))
-	{
-		return true;
-	}
+	inline CVector3& operator *= (const CVector3& a) { V[0] *= a.V[0]; V[1] *= a.V[1]; V[2] *= a.V[2]; return (*this); }
+	inline CVector3& operator /= (const CVector3& a) { V[0] /= a.V[0]; V[1] /= a.V[1]; V[2] /= a.V[2]; return (*this); }
+	inline CVector3& operator += (const CVector3& a) { V[0] += a.V[0]; V[1] += a.V[1]; V[2] += a.V[2]; return (*this); }
+	inline CVector3& operator -= (const CVector3& a) { V[0] -= a.V[0]; V[1] -= a.V[1]; V[2] -= a.V[2]; return (*this); }
 
-	return ParseUnknown(parent, position);
-}
+	CVector3 operator * (const float) const;
+	CVector3 operator + (const float) const;
+	CVector3 operator - (const float) const;
+	CVector3 operator / (const float) const;
 
-bool ASTParser::ParseEnum( ASTNode* parent, ASTPosition& position )
-{
-	std::unique_ptr<ASTNode> subNode(new ASTNode());
-	subNode->type = "ENUM";
+	inline CVector3& operator *= (const float a) { return (*this) = (*this) * a; }
+	inline CVector3& operator += (const float a) { return (*this) = (*this) + a; }
+	inline CVector3& operator -= (const float a) { return (*this) = (*this) - a; }
+	inline CVector3& operator /= (const float a) { return (*this) = (*this) / a; }
 
-	if(position.GetToken().TokenType != Token::Type::Enum)
-		return false;
+	//! \name Row-ordered vector * matrix (DirectX Style)
+	//@{
+	CVector3 operator * (const CMatrix& Mat) const;
+	CVector3& operator *= (const CMatrix& Mat);
+	//@}
 
-	position.Increment();
+	CVector3 operator * (const CQuat& Q) const;
+	CVector3& operator *= (const CQuat& Q);
 
-	if(position.GetToken().TokenType == Token::Type::Class)
-	{
-		// c++11 enum class
-		subNode->type = "ENUM_CLASS";
-		position.Increment();
-	}
+	CVector3& operator= (const CVector3& v) { for(int i=0;i<3;++i) V[i] = v.V[i]; return *this; }
 
-	if(position.GetToken().TokenType != Token::Type::Keyword)
-		throw std::runtime_error("expected keyword after enum definition");
 
-	subNode->data.push_back(position.GetToken().TokenData);
+	inline float& operator[] (int index) { return V[index]; }
+	inline const float& operator[] (int index) const { return V[index]; }
 
-	if(position.GetNextToken().TokenType != Token::Type::LBrace)
-		throw std::runtime_error("expected left brace after enum keyword");
-
-	position.Increment();
-
-	while(true)
-	{
-		if(ParseEnumDefinition(subNode.get(), position))
-		{
-
-		}
-		else if(position.GetToken().TokenType == Token::Type::RBrace)
-			break;
-		else
-			position.Increment();
-	}
-
-	if(position.GetNextToken().TokenType != Token::Type::Semicolon)
-		throw std::runtime_error("expected semicolon after enum closing brace");
+	static CVector3 Create() { return CVector3(); }
+	static CVector3 Create(float x, float y, float z) { return CVector3(x,y,z); }
+	static float Dot(const CVector3& v1, const CVector3& v2) { return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z; }
 	
-	position.Increment();
+	float GetX() { return x; }
+	float GetY() { return y; }
+	float GetZ() { return z; }
 
-	// store subnode
-	parent->children.push_back(subNode.release());
-	return true;
-}
+	void SetX(float v) { x = v; }
+	void SetY(float v) { y = v; }
+	void SetZ(float v) { z = v; }
 
-bool ASTParser::ParseEnumDefinition( ASTNode* parent, ASTPosition& position )
-{
-	if(position.GetToken().TokenType != Token::Type::Keyword)
-		return false;
+	inline void Set(const CVector3& v1) { V[0]=v1[0]; V[1]=v1[1]; V[2]=v1[2]; }
+	inline void Set(float v1[3]) { V[0]=v1[0]; V[1]=v1[1]; V[2]=v1[2]; }
+	inline void Set(float X=0.0f, float Y=0.0f, float Z=0.0f) { x=X; y=Y; z=Z; }
 
-	std::unique_ptr < ASTNode> subNode(new ASTNode());
-	subNode->type = "ENUM_DEFINITION";
+	void SetTo(const CVector3& other) { (*this) = other; }
+	void SetToMirror(const CVector3& v0, const CVector3& mirrorPoint) {(*this) = v0.Mirror(mirrorPoint); }
+	void SetToCross(const CVector3& v1, const CVector3& v2) { (*this) = v1.Cross(v2); }
+	void SetToUnproject(const CVector3& v0, const CMatrix& mat, float viewportWidth, float viewportHeight) { (*this) = CVector3::UnprojectVector(v0, mat, viewportWidth, viewportHeight); }
+	void SetToProject(const CVector3& v0, const CMatrix& mat, float viewportWidth, float viewportHeight) { (*this) = CVector3::ProjectVector(v0, mat, viewportWidth, viewportHeight); }
+	void SetToInterpolatedRotation(const CVector3& v0, const CVector3& v1, float factor) { (*this) = v0.InterpolateRotation(v1, factor); }
+	void SetToMatrixLocalX(const CMatrix& m);
+	void SetToMatrixLocalY(const CMatrix& m);
+	void SetToMatrixLocalZ(const CMatrix& m);
+	void SetToMatrixViewLocalX(const CMatrix& m);
+	void SetToMatrixViewLocalY(const CMatrix& m);
+	void SetToMatrixViewLocalZ(const CMatrix& m);
+	void SetToMatrixTranslation(const CMatrix& m);
+	void Transform(const CMatrix& pre_m);
+	void Add(const CVector3& v) { (*this) += v; }
+	void Sub(const CVector3& v) { (*this) -= v; }
+	void Mul(const CVector3& v) { (*this) *= v; }
+	void MulNumber(float v) { (*this) *= v; }
+	void Normalize() { float magnitude=1.0f/sqrtf(V[0] * V[0] + V[1] * V[1] + V[2] * V[2]); V[0] *= magnitude; V[1] *= magnitude; V[2] *= magnitude; }
+	float Dot(const CVector3& v2) const { return x * v2.x + y * v2.y + z * v2.z; }
 
-	// store token
-	subNode->data.push_back(position.GetToken().TokenData);
-	position.Increment();
-
-	if(position.GetToken().TokenType == Token::Type::Equals)
-	{
-		position.Increment();
-
-		// add the rest
-		// add initialization clause
-		std::unique_ptr < ASTNode> subSubNode(new ASTNode());
-		subSubNode->type = "INIT";
-
-		subSubNode->data.push_back(CombineWhile_ScopeAware(position, [] ( ASTPosition& position) { return position.GetToken().TokenType != Token::Type::Comma && position.GetToken().TokenType != Token::Type::RBrace && position.GetToken().TokenType != Token::Type::Semicolon; }, &ASTParser::ASTPosition::FilterComments));
-		subNode->children.push_back(subSubNode.release());
-	}
-	// store subnode
-	parent->children.push_back(subNode.release());
-	return true;
-}
-
-bool ASTParser::ParseIgnored( ASTNode* parent, ASTPosition& position )
-{
-	auto& token = position.GetToken();
-	if(token.TokenType == Token::Type::CommentMultiLine || token.TokenType == Token::Type::CommentSingleLine || token.TokenType == Token::Type::Whitespace || token.TokenType == Token::Type::Newline)
-	{
-		position.Increment();
-		return true;
-	}
-	return false;
-}
-
-bool ASTParser::ParseUnknown( ASTNode* parent, ASTPosition& position )
-{
-	printf(" token: %d (type: %d, line: %d): %s\n", position.Position, position.GetToken().TokenType, position.GetToken().TokenLine, position.GetToken().TokenData.c_str());
-	position.Increment();
-	return true;
-}
-
-bool ASTParser::ParseEndOfStream( ASTNode* parent, ASTPosition& position )
-{
-	if(position.GetToken().TokenType == Token::Type::EndOfStream)
-		return true;
-
-	return false;
-}
-
-bool ASTParser::ParseClassInheritance(int &inheritancePublicPrivateProtected, ASTNode* parent, ASTPosition& cposition)
-{
-	ASTPosition position = cposition;
-	if(position.GetToken().TokenType == Token::Type::Public)
-	{
-		inheritancePublicPrivateProtected = 0;
-		position.Increment();
-	}
-	else if(position.GetToken().TokenType == Token::Type::Private)
-	{
-		inheritancePublicPrivateProtected = 1;
-		position.Increment();
-	}
-	else if (position.GetToken().TokenType == Token::Type::Protected)
-	{
-		inheritancePublicPrivateProtected = 2;
-		position.Increment();
-	}
-	
-	if (position.GetToken().TokenType != Token::Type::Keyword)
-		return false;
-	
-	ASTNode* subNode = new ASTNode();
-	subNode->type = "INHERIT";
-	if(inheritancePublicPrivateProtected == 0)
-		subNode->data.push_back("public");
-	else if(inheritancePublicPrivateProtected == 1)
-		subNode->data.push_back("private");
-	else if(inheritancePublicPrivateProtected == 2)
-		subNode->data.push_back("protected");
-
-	subNode->data.push_back(position.GetToken().TokenData);
-	parent->children.push_back(subNode);
-	position.Increment();
-	cposition = position;
-	return true;
-}
-
-bool ASTParser::ParseClass( ASTNode* parent, ASTPosition& position )
-{
-	if(position.GetToken().TokenType != Token::Type::Class)
-		return false;
-
-	int privatePublicProtected = 0;
-	std::unique_ptr<ASTNode> subNode(new ASTNode());
-	subNode->type = "CLASS";
-
-	if(position.GetNextToken().TokenType != Token::Type::Keyword)
-		throw std::runtime_error("expected class name after class definition");
-
-	subNode->data.push_back(position.GetToken().TokenData);
-
-	position.Increment();
-
-	if(position.GetToken().TokenType == Token::Type::LBrace)
-	{
-		// brace - class definition starts now
-	}
-	else if(position.GetToken().TokenType == Token::Type::Colon)
-	{
-		position.Increment();
-
-		// colon - inheritance
-		int inheritancePublicPrivateProtected = 1;
-		while(ParseClassInheritance(inheritancePublicPrivateProtected, subNode.get(), position)) 
-		{ 
-			if(position.GetToken().TokenType == Token::Type::Comma) 
-			{ 
-				position.Increment(); 
-				continue;
-			}
-			else 
-				break; 
-		}
-	}
-	else
-		throw std::runtime_error("expected left brace after class name");
-
-	position.Increment();
-
-	while(true)
-	{
-		if(ParsePrivatePublicProtected(privatePublicProtected, subNode.get(), position)) {}
-		else if(ParseDeclaration(privatePublicProtected, subNode.get(), position)) {}
-		else if (ParseClassConstructorDestructor(subNode.get(), position, privatePublicProtected)) {}
-		//else if(ParseFunction(privatePublicProtected, subNode.get(), position)) {} // subclass
-		else if(ParseClass(subNode.get(), position)) {} // subclass
-		else if(ParseEnum(subNode.get(), position)) {} // sub enum
-		else if(position.GetToken().TokenType == Token::Type::RBrace)
-			break;
-		else
-			position.Increment();
-	}
-
-	if(position.GetNextToken().TokenType != Token::Type::Semicolon)
-		throw std::runtime_error("expected semicolon after class closing brace");
-
-	position.Increment();
-
-	// store subnode
-	parent->children.push_back(subNode.release());
-	return true;
-}
-
-bool ASTParser::ParsePrivatePublicProtected(int& privatePublicProtected,  ASTNode* parent, ASTPosition& cposition )
-{
-	ASTPosition position = cposition;
-
-	if(position.GetToken().TokenType == Token::Type::Private)
-	{
-		if(position.GetNextToken().TokenType == Token::Type::Colon)
-		{
-			privatePublicProtected = 0;
-			position.Increment();
-			cposition = position;
-			return true;
-		}
-	}
-
-	if(position.GetToken().TokenType == Token::Type::Public)
-	{
-		if(position.GetNextToken().TokenType == Token::Type::Colon)
-		{
-			privatePublicProtected = 1;
-			position.Increment();
-			cposition = position;
-			return true;
-		}
-	}
-
-	if(position.GetToken().TokenType == Token::Type::Protected)
-	{
-		if(position.GetNextToken().TokenType == Token::Type::Colon)
-		{
-			privatePublicProtected = 2;
-			position.Increment();
-			cposition = position;
-			return true;
-		}
-	}
-
-	return false;
-}
-
-enum class ASTFunctionType
-{
-	Regular,
-	Constructor,
-	Destructor,
-	Operator
+	//! Get the angle between two vectors. Uses Dot (Dot(a,b) = mag(a)*mag(b)*cos(betweenAngle)), returns betweenAngle.
+	float AngleBetween(const CVector3& v2) const;
+	float SqrLength() const;
+	float Length() const;
+private:
 };
 
 
-bool ASTParser::ParseConstructorInitializer(ASTNode* parent, ASTPosition& cposition)
+class  CPlane
 {
-	ASTPosition position = cposition;
-	std::string name = "";
+public:
+	float a,b,c,d;
+
+	CPlane() { a=b=c=d=0.0f; }
+
+	inline void CreatePlane(CVector3 PointOnPlane, CVector3 PlaneNormal) { a = PlaneNormal.x; b = PlaneNormal.y; c = PlaneNormal.z; d = -PlaneNormal.Dot(PointOnPlane); }
+
+	//! Find closest point to specified Point on the plane
+	inline CVector3 GetClosestPoint(const CVector3& Point) const { CVector3 normal(a,b,c); return Point - normal * (d + Point.Dot(normal)); }
 	
-	// find keyword
-	if (position.GetToken().TokenType != Token::Type::Keyword)
-		return false;
+	//! Reflects vector over plane
+	inline CVector3 ReflectVector(const CVector3& Reflect) const { return Reflect.Mirror(GetClosestPoint(Reflect)); }
 
-	// store name and increment
-	name = position.GetToken().TokenData;
-	position.Increment();
+	//! Returns this plane, only normalized.
+	CPlane GetNormalizedPlane() const;
+	//! Gives the result of the Ax+By+Cz+D computation.
+	inline float ClassifyPoint(const CVector3& pt) const { return a*pt.x + b*pt.y + c*pt.z + d; }
+};
 
-	// find left parenthesis
-	if (position.GetToken().TokenType != Token::Type::LParen)
-		return false;
-
-	std::vector<ASTTokenIndex> scopeTokens;
-	if (ParseSpecificScopeInner(position, scopeTokens, Token::Type::LParen, Token::Type::RParen, &ASTPosition::FilterComments) == false)
-		return false;
-
-	position.Increment(); // skip rparen
-
-	// everything checked out - add constructor initializer node
-	std::unique_ptr<ASTNode> subNode = std::unique_ptr<ASTNode>(new ASTNode);
-	subNode->type = "CONSTRUCTOR_INITIALIZER";
-	subNode->data.push_back(name);
-	subNode->data.push_back(CombineTokens(this, scopeTokens, ""));
-	parent->children.push_back(subNode.release());
-
-	// advance position to current and return success
-	cposition = position;
-	return true;
-}
-
-
-bool ASTParser::ParseSubType(int privatePublicProtected, std::unique_ptr<ASTNode>& varNode, ASTPosition &position, std::unique_ptr<ASTType> &varType, int mode)
+class CMatrix
 {
-	if (mode == SUBTYPE_MODE_SUBARGUMENT)
-	{
-		// parse base type
-		if (ParseNTypeBase(position, varType.get()) == false)
-			return false;
-	}
-
-	// make preamble of variable
-	if (privatePublicProtected == 0)
-		varNode->data.push_back("private");
-	if (privatePublicProtected == 1)
-		varNode->data.push_back("public");
-	if (privatePublicProtected == 2)
-		varNode->data.push_back("protected");
-
-	// parse pointers and references into type
-	ParseNTypePointersAndReferences(position, varType.get());
-
-	if (mode == SUBTYPE_MODE_SUBVARIABLE && position.GetToken().TokenType != Token::Type::Keyword && position.GetToken().TokenType != Token::Type::Operator) // subvariable must have identifier
-		return false;
-
-	// get variable name if available
-	if (position.GetToken().TokenType == Token::Type::Keyword || position.GetToken().TokenType == Token::Type::Operator)
-	{
-		// store variable name
-		bool isOperator = position.GetToken().TokenType == Token::Type::Operator;
-		std::vector<ASTTokenIndex> nameTokens;
-		nameTokens.push_back(position.GetTokenIndex());
-		position.Increment();
-
-		// parse namespaces
-		while (position.GetToken().TokenType == Token::Type::Doublecolon)
-		{
-			nameTokens.push_back(position.GetTokenIndex()); // add doublecolon
-			position.Increment();
-
-			nameTokens.push_back(position.GetTokenIndex()); // add identifier
-			if (position.GetToken().TokenType == Token::Type::Operator)
-			{
-				isOperator = true;
-				position.Increment();
-				break; // process operator later
-			}
-			if (position.GetToken().TokenType != Token::Type::Keyword)
-				return false;
-			position.Increment();
-		}
-
-		varNode->data.push_back(CombineTokens(this, nameTokens, ""));
-
-		if (isOperator)
-		{
-			std::vector<ASTTokenIndex> operatorTokens;
-			if (ParseFunctionOperatorType(varNode.get(), position, operatorTokens) == false)
-				return false;
-
-			varNode->data.push_back(CombineTokens(this, operatorTokens, ""));
-		}
-	}
-	else
-	{
-		varNode->data.push_back("");
-	}
-
-	// parse array definitions
-	ParseNTypeArrayDefinitions(position, varType.get());
-
-	// assignment
-	if (position.GetToken().TokenType == Token::Type::Equals)
-	{
-		position.Increment();
-
-		// add initialization clause
-		ASTNode* subSubNode = new ASTNode();
-		subSubNode->type = "INIT";
-
-		subSubNode->data.push_back(CombineWhile_ScopeAware(position, [](ASTPosition& position) { return position.GetToken().TokenType != Token::Type::Semicolon && position.GetToken().TokenType != Token::Type::Comma; }, &ASTParser::ASTPosition::FilterComments));
-		varNode->children.push_back(subSubNode);
-	}
-
-	return true;
-}
-
-bool ASTParser::ParseFunctionArguments(ASTNode* varNode, int privatePublicProtected, ASTPosition &cposition)
-{
-	ASTPosition position = cposition;
-	// find all function arguments
-	while (true)
-	{
-		std::unique_ptr<ASTNode> argNode(new ASTNode());
-		std::unique_ptr<ASTType> argType(new ASTType(this));
-		if (ParseSubType(privatePublicProtected, argNode, position, argType, SUBTYPE_MODE_SUBARGUMENT) == false)
-			break;
-
-		argNode->type = "ARGUMENT";
-		argNode->children.push_back(argType.release());
-		varNode->children.push_back(argNode.release());
-
-		if (position.GetToken().TokenType == Token::Type::Comma)
-		{
-			position.Increment();
-			continue;
-		}
-		else if (position.GetToken().TokenType == Token::Type::RParen)
-		{
-			break;
-		}
-		else
-			return false; // not actually a function definition, or one with an error.
-
-	};
-
-	position.Increment();
-	cposition = position;
-	return true;
-}
-
-bool ASTParser::ParseDeclaration( int privatePublicProtected, ASTNode* parent, ASTPosition& cposition )
-{
-	ASTPosition position = cposition;
-	std::unique_ptr<ASTType> subTypeBase(new ASTType(this));
-
-	// exclude operators when found
-	if (position.GetToken().TokenType != Token::Type::Operator)
-	{
-		// parse type
-		if (ParseNTypeBase(position, subTypeBase.get()) == false)
-			return false;
-	}
-
-
-	// parse partial variables
-	std::vector<std::unique_ptr<ASTNode>> subNodes;
-	while(true) 
+public:
+	CMatrix() 
 	{ 
-		std::unique_ptr<ASTNode> varNode(new ASTNode()); 
-		std::unique_ptr<ASTType> varType(new ASTType(*subTypeBase.get()));
-
-		if (ParseSubType(privatePublicProtected, varNode, position, varType, SUBTYPE_MODE_SUBVARIABLE) == false)
-			return false;
-
-		if (position.GetToken().TokenType == Token::Type::LParen)
-		{
-			// function found.
-			varNode->type = "FUNCTION";
-			if (ParseFunctionRemainder(varNode.get(), position, privatePublicProtected) == false)
-				return false;
-
-			if (ParseFunctionFinalizer(varNode.get(), position, privatePublicProtected) == false)
-				return false;
-
-			
-			varNode->children.insert(varNode->children.begin(), varType.release());
-			subNodes.push_back(std::move(varNode));
-
-			if (position.GetToken().TokenType == Token::Type::Comma)
-			{
-				// another function is defined
-				position.Increment();
-				continue;
-			}
-
-
-			break;
-		}
-		else
-		{
-			// should be a variable
-			varNode->type = "VARIABLE";
-
-			// check whether the variable is not invalid
-			if (Tokens[varType->typeName[0]].TokenType == Token::Type::Void && varType->typePointers.size() == 0)
-				throw std::runtime_error("Variables can not be of void type");
-		}
-		
-		// check for more or terminator
-		if(position.GetToken().TokenType == Token::Type::Comma)
-		{
-			// loop again, we should have another variable
-			position.Increment();
-
-			varNode->children.insert(varNode->children.begin(), varType.release());
-			subNodes.push_back(std::move(varNode));
-			continue;
-		}
-		else if(position.GetToken().TokenType == Token::Type::Semicolon)
-		{
-			// end of declaration
-			position.Increment();
-
-			varNode->children.insert(varNode->children.begin(), varType.release());
-			subNodes.push_back(std::move(varNode));
-			break; // end of statement - variable(s) parsed successfully
-		}
-		else
-		{
-			return false; // not a valid variable construct
-		}
+		Identity(); 
+	}
+	CMatrix(bool dontInitialize) 
+	{ 
+	}
+	CMatrix(float Value) 
+	{ 
+		Zero(Value); 
+	}
+	CMatrix(const CMatrix& m) 
+	{ 
+		memcpy(MatrixFlat, m.MatrixFlat, 64); 
 	}
 
-	// everything went smoothly - store and return success
-	cposition = position;
-	for (auto& it : subNodes)
-		parent->children.push_back(it.release());
-	return true;
-}
+	float Matrix[4][4]; // x<column>, y<row>
+	float MatrixFlat[16]; // index formula x<column>*4+y<row>
 
-bool ASTParser::ParsePointerReferenceSymbol( ASTPosition &cposition, std::vector<Token> &pointerTokens, std::vector<Token> &pointerModifierTokens )
-{
-	bool isReference = false;
-	ASTPosition position(cposition);
-	Token ptrToken;
+	inline CMatrix operator * (const CMatrix& Mat) const { CMatrix mnew(*this); mnew *= Mat; return mnew; }
+	inline CMatrix operator ^ (const CMatrix& Mat) const { CMatrix mnew(*this); mnew ^= Mat; return mnew; }
+	inline CMatrix operator + (const CMatrix& Mat) const { CMatrix mnew(*this); mnew += Mat; return mnew; }
+	inline CMatrix operator - (const CMatrix& Mat) const { CMatrix mnew(*this); mnew -= Mat; return mnew; }
 
-	if(position.GetToken() == Token::Type::Asterisk || position.GetToken() == Token::Type::Ampersand)
-	{
-		ptrToken = position.GetToken();
-	}
-	else
-	{
-		return false;
-	}
-	position.Increment();
+	CVector3 operator * (const CVector3& V) const;	//!< \name matrix * Column-ordered vector (OpenGL Style)
+	CMatrix& operator *= (const CMatrix& Mat);		//!< Matrix Concatenation (opengl/mathematics style, also known as post-multiplication)(normal way, r11 = m11*n11+m21*n12+m31*n13+m41*n14, etc.)
+	CMatrix& operator ^= (const CMatrix& Mat);		//!< Inverse Matrix Concatenation (directX style, also known as pre-multiplication)
+	CMatrix& operator += (const CMatrix& Mat);		//!< Matrix Addition
+	CMatrix& operator -= (const CMatrix& Mat);		//!< Matrix Substraction
 
-	// check for pointer/reference modifiers
-	while(position.GetToken() == Token::Type::Const || position.GetToken() == Token::Type::Volatile)
-	{
-		if(ptrToken == Token::Type::Ampersand)
-			throw std::exception("modifiers (const/volatile) are not allowed on a reference");
+	//! Matrix Comparison Operator
+	bool operator == (const CMatrix& Mat) const;
 
-		if(position.GetToken() == Token::Type::Const) // const applies to the thing to the left (so it could apply to the pointer)
-			pointerModifierTokens.push_back(position.GetToken());
-		if(position.GetToken() == Token::Type::Volatile) // volatile applies to the thing to the left (so it could apply to the pointer)
-			pointerModifierTokens.push_back(position.GetToken());
+	//! Matrix Inverse Comparison Operator
+	inline bool operator != (const CMatrix& Mat) const { return !(*this == Mat); }
 
-		position.Increment();
-	}
-
-	// parse succeeded
-	cposition = position;
-	pointerTokens.push_back(ptrToken);
-	return true;
-}
-
-bool ASTParser::ParseSpecificScopeInner(ASTPosition& cposition, std::vector<ASTTokenIndex> &insideBracketTokens, Token::Type tokenTypeL, Token::Type tokenTypeR, bool(*filterAllows)(Token& token) /*= &ASTPosition::FilterWhitespaceComments*/)
-{
-	ASTPosition position(cposition);
-
-	if (position.GetToken().TokenType != tokenTypeL)
-		return false;
-	position.Increment(1, filterAllows);
-
-	while (position.GetToken().TokenType != tokenTypeR)
-	{
-		if (position.GetToken().TokenType == Token::Type::EndOfStream)
-			throw new std::runtime_error("error while parsing scope - end of file found before closing token was found");
-
-		if (position.GetToken().TokenType == tokenTypeL)
-		{
-			// add LBracket
-			insideBracketTokens.push_back(position.GetTokenIndex());
-
-			// add inner
-			std::vector<ASTTokenIndex> inside;
-			if (ParseSpecificScopeInner(position, inside, tokenTypeL, tokenTypeR, filterAllows) == false)
-				return false;
-			insideBracketTokens.insert(insideBracketTokens.end(), inside.begin(), inside.end());
-
-			// add RBracket
-			insideBracketTokens.push_back(position.GetTokenIndex());
-			position.Increment(1, filterAllows);
-		}
-		else
-		{
-			insideBracketTokens.push_back(position.GetTokenIndex());
-			position.Increment(1, filterAllows);
-		}
-	}
-
-	cposition = position;
-	return true;
-}
-
-bool ASTParser::ParseFunctionOperatorType(ASTNode* parent, ASTPosition& cposition, std::vector<ASTTokenIndex>& ctokens)
-{
-	std::vector<ASTTokenIndex> tokens;
-	ASTPosition position = cposition;
-
-	// parse operator () (special case)
-	if (position.GetToken().TokenType == Token::Type::LParen)
-	{
-		tokens.push_back(position.GetTokenIndex());
-		position.Increment();
-		
-		if (position.GetToken().TokenType == Token::Type::RParen)
-		{
-			tokens.push_back(position.GetTokenIndex());
-			position.Increment();
-		}
-		else
-			return false;
-	}
-	else
-	{
-		// parse other operators
-		while (position.GetToken().TokenType != Token::Type::EndOfStream)
-		{
-			if (position.GetToken().TokenType == Token::Type::LParen)
-				break; // start of function arguments found
-			else if (position.GetToken().TokenType == Token::Type::Semicolon)
-				throw new std::runtime_error("semicolon found while parsing operator arguments - we must have gone too far. invalid operator?");
-			else
-			{
-				tokens.push_back(position.GetTokenIndex());
-				position.Increment();
-			}
-		}
-
-	}
-
-	cposition = position;
-	ctokens.swap(tokens);
-	return true;
-
-}
-
-bool ASTParser::ParseModifierToken(ASTPosition& position, std::vector<ASTTokenIndex>& modifierTokens)
-{
-	if (position.GetToken().TokenType == Token::Type::Const)
-		modifierTokens.push_back(position.GetTokenIndex());
-	else if (position.GetToken().TokenType == Token::Type::Inline)
-		modifierTokens.push_back(position.GetTokenIndex());
-	else if (position.GetToken().TokenType == Token::Type::Extern)
-		modifierTokens.push_back(position.GetTokenIndex());
-	else if (position.GetToken().TokenType == Token::Type::Virtual)
-		modifierTokens.push_back(position.GetTokenIndex());
-	else if (position.GetToken().TokenType == Token::Type::Volatile)
-		modifierTokens.push_back(position.GetTokenIndex());
-	else if (position.GetToken().TokenType == Token::Type::Unsigned)
-		modifierTokens.push_back(position.GetTokenIndex());
-	else if (position.GetToken().TokenType == Token::Type::Static)
-		modifierTokens.push_back(position.GetTokenIndex());
-	else if (position.GetToken().TokenType == Token::Type::Mutable)
-		modifierTokens.push_back(position.GetTokenIndex());
-	else
-		return false;
-	position.Increment();
-	return true;
-}
-bool ASTParser::ParseNTypeBase(ASTPosition &position, ASTType* typeNode)
-{
-	std::vector<ASTTokenIndex>& typeTokens = typeNode->typeName;
-	std::vector<ASTTokenIndex>& modifierTokens = typeNode->typeModifiers;
-	std::vector<ASTTokenIndex>& namespaceTokens = typeNode->typeNamespaces;
-	int typeWordIndex = -1;
-	while (true)
-	{
-		if (position.GetToken().TokenType == Token::Type::Keyword)
-		{
-			if (typeWordIndex == -1)
-			{
-				typeTokens.push_back(position.GetTokenIndex());
-				typeWordIndex = typeTokens.size() - 1;
-			}
-			else
-				break; // this must be the variable name (two keywords not allowed in a type)
-		}
-		else if (position.GetToken().TokenType == Token::Type::BuiltinType || position.GetToken().TokenType == Token::Type::Void)
-		{
-			if (typeWordIndex == -1)
-			{
-				typeTokens.push_back(position.GetTokenIndex());
-				typeWordIndex = typeTokens.size() - 1;
-			}
-			else
-				return false; // invalid - type has already been set to a keyword
-		}
-		else if (ParseModifierToken(position, modifierTokens))
-			continue;
-		else if (position.GetToken().TokenType == Token::Type::Doublecolon)
-		{
-			if (typeWordIndex != -1)
-			{
-				if (Tokens[typeTokens[typeWordIndex]].TokenType == Token::Type::Keyword)
-				{
-					namespaceTokens.push_back(typeTokens[typeWordIndex]);
-					typeTokens.clear();
-					typeWordIndex = -1; // namespace found - reset type word index
-				}
-				else if (Tokens[typeTokens[typeWordIndex]].TokenType == Token::Type::BuiltinType)
-					throw std::runtime_error("cannot namespace a built-in type");
-				else if (Tokens[typeTokens[typeWordIndex]].TokenType == Token::Type::Void)
-					throw std::runtime_error("cannot namespace a built-in type");
-			}
-		}
-		else
-			return typeWordIndex != -1;
-		position.Increment();
-	}
-
-	return true;
-}
-
-bool ASTParser::ParseNTypeSinglePointersAndReferences(ASTPosition &cposition, ASTType* typeNode)
-{
-	bool isReference = false;
-	ASTPosition position(cposition);
-	ASTPointerType ptrData;
-
-	Token ptrToken;
-
-	if (position.GetToken() == Token::Type::Asterisk || position.GetToken() == Token::Type::Ampersand)
-	{
-		if (position.GetToken() == Token::Type::Asterisk)
-			ptrData.pointerType = ASTPointerType::Type::Pointer;
-		else if (position.GetToken() == Token::Type::Ampersand)
-			ptrData.pointerType = ASTPointerType::Type::Reference;
-		ptrToken = position.GetToken();
-	}
-	else
-	{
-		return false;
-	}
-	position.Increment();
-
-	// check for pointer/reference modifiers
-	while (position.GetToken() == Token::Type::Const || position.GetToken() == Token::Type::Volatile)
-	{
-		if (ptrToken == Token::Type::Ampersand)
-			throw std::exception("modifiers (const/volatile) are not allowed on a reference");
-
-		if (position.GetToken() == Token::Type::Const) // const applies to the thing to the left (so it could apply to the pointer)
-			ptrData.pointerModifiers.push_back(position.GetToken());
-		if (position.GetToken() == Token::Type::Volatile) // volatile applies to the thing to the left (so it could apply to the pointer)
-			ptrData.pointerModifiers.push_back(position.GetToken());
-
-		position.Increment();
-	}
-
-	// parse succeeded
-	cposition = position;
-	ptrData.pointerToken = ptrToken;
-	typeNode->typePointers.push_back(ptrData);
-	return true;
-}
-
-bool ASTParser::ParseNTypePointersAndReferences(ASTPosition &position, ASTType* typeNode)
-{
-	bool res = false;
-	while (ParseNTypeSinglePointersAndReferences(position, typeNode))
-	{
-		res |= true;
-	}
-	return res;
-}
-
-bool ASTParser::ParseNTypeArrayDefinitions(ASTPosition &position, ASTType* typeNode)
-{
-	// parse arrays
-	bool hasArray = false;
-
-	std::vector<ASTTokenIndex> arrayTokens;
-	while (ParseSpecificScopeInner(position, arrayTokens, Token::Type::LBracket, Token::Type::RBracket, &ASTParser::ASTPosition::FilterComments))
-	{
-		// mark that an array has been found
-		hasArray = true;
-
-		// add array tokens to array by pushing a new vector and swapping.
-		typeNode->typeArrayTokens.push_back(std::vector<ASTTokenIndex>());
-		typeNode->typeArrayTokens.back().swap(arrayTokens);
-
-		// go to next token (advance past RBracket )
-		position.Increment(); 
-	}
-
-	return hasArray;
-}
-
-bool ASTParser::ParseFunctionRemainder(ASTNode* varNode, ASTPosition &cposition, int privatePublicProtected)
-{
-	bool success = false;
-	ASTPosition position = cposition;
-	// we should start at LParen
-	if (position.GetToken().TokenType != Token::Type::LParen)
-		return false;
+	//! Fill the matrix with zeroes
+	void Zero(float Value=0.0f);
+	//! Make the matrix an identity matrix (default at construction)
+	void Identity(float scale=1.0f);
+	//! Calculate the determinant of the matrix (when 0, the matrix has no inverse.)
+	float Determinant();
+	//! Transpose the matrix (switch row to column and vice versa)
+	void Transpose();
 	
-	position.Increment(); // advance past LParen
+	//! Matrix inverse (is a pretty costly task so use with care.)
+	bool Inverse();
 
-	// parse function arguments
-	if (position.GetToken().TokenType != Token::Type::RParen)
-	{
-		// we are not. try parsing subvariables
-		if (ParseFunctionArguments(varNode, privatePublicProtected, position) == false)
-			return false;
-	}
-	else
-	{
-		// advance past rparen
-		position.Increment();
-	}
+	//! Row-wise normalisation (Normalizes every axis matrix row to compensate for matrixial drift, shearing your values.)
+	void Normalize();
 
-	cposition = position;
-	return true;
-}
+	float Sum() const { float sum=0.0f; for(int y=0; y<4; y++) { for(int x=0;x<4;x++) { sum += fabsf(Matrix[x][y]); } } return sum; }
 
-bool ASTParser::ParseFunctionFinalizer(ASTNode* varNode, ASTPosition& position, int privatePublicProtected)
+
+	void Translate3(const CVector3& Translate);
+	void Scale3(const CVector3& Scale);
+
+	void Translate3(float x, float y, float z) { Translate3(CVector3(x,y,z)); }
+	void Scale3(float x, float y, float z) { Scale3(CVector3(x,y,z)); }
+	void ScaleUniform(float xyz) { Scale3(CVector3(xyz,xyz,xyz)); }
+
+	void RotateX(float Theta);
+	void RotateY(float Theta);
+	void RotateZ(float Theta);
+
+	//! Euler coordinates -> Matrix
+	void RotateEuler(float RotX, float RotY, float RotZ);
+	inline void RotateEuler(CVector3 Rot) { RotateEuler(Rot.x, Rot.y, Rot.z); }
+
+	//! Rotate over an axis by a certain angle.
+	void RotateAxisAngle(const CVector3& Axis, float angle);
+
+	//! Matrix Multiplication, mostly used for multiplying with a matrix of values. (r11 = m11*n11)
+	void MultiplyValues(CMatrix& Mat);
+
+	void SetTo(const CMatrix& other) { (*this) = other; }
+	void Mul(const CMatrix& other) { (*this) *= other; }
+	void MulVector(CVector3& other) { other = (*this) * other; }
+	void MulVectorInto(const CVector3& other, CVector3& into) { into = (*this) * other; }
+
+	void SetLocalX(const CVector3& a) { Matrix[0][0] = a.x; Matrix[0][1] = a.y; Matrix[0][2] = a.z; }
+	void SetLocalY(const CVector3& a) {  Matrix[1][0] = a.x; Matrix[1][1] = a.y; Matrix[1][2] = a.z; }
+	void SetLocalZ(const CVector3& a) { Matrix[2][0] = a.x; Matrix[2][1] = a.y; Matrix[2][2] = a.z; }
+
+	float Get(int column, int row) { return Matrix[column][row]; } //!< Function used to get Lua the matrix values
+	void Set(int column, int row, float value) { Matrix[column][row] = value; } //!< Function used to set matrix values in Lua.
+
+	bool IsIdentity() { static CMatrix IdentMatrix; if(*this == IdentMatrix) return true; else return false; }
+
+	void LerpWith(const CMatrix& b, float fac);
+
+	//! Calculates the determinant of a 3x3 matrix. (internally used but available for custom use as well)
+	float Determinant3x3(float m11, float m21, float m31, float m12, float m22, float m32, float m13, float m23, float m33) { return (m21*m32*m13+m31*m12*m23+m11*m22*m33)-(m33*m12*m21+m23*m32*m11+m13*m22*m31); }
+
+	void SetProjection(float FieldOfViewYDegrees, float AspectRatio, float Near, float Far) { (*this) = CMatrix::Projection(FieldOfViewYDegrees, AspectRatio, Near, Far); }
+	void SetProjectionOrtho(float Width, float Height) { (*this) = CMatrix::ProjectionOrtho(Width, Height); }
+	void SetView(const CVector3& Eye, const CVector3& LookAt, const CVector3& Up) { (*this) = CMatrix::View(Eye, LookAt, Up); }
+	void SetTransformIntoCameraMatrix(const CMatrix& m) {(*this) = TransformIntoCameraMatrix(m); }
+	void SetLookat(const CVector3& Position, CVector3 Direction, CVector3 Up=CVector3(0.0f, 0.0f, 1.0f), bool Transpose=true);
+	void SetTranslation(const CVector3& set) { Matrix[3][0] = set.x, Matrix[3][1] = set.y, Matrix[3][2] = set.z; }
+
+	// unrolled vectorless functions
+	void SetView(float Eye_x, float Eye_y, float Eye_z, float Lookat_x, float Lookat_y, float Lookat_z, float Up_x, float Up_y, float Up_z) { (*this) = CMatrix::View(CVector3(Eye_x, Eye_y, Eye_z), CVector3(Lookat_x, Lookat_y, Lookat_z), CVector3(Up_x, Up_y, Up_z)); }
+	void SetTranslation(float x, float y, float z) { Matrix[3][0] = x, Matrix[3][1] = y, Matrix[3][2] = z; }
+	void SetLookat(float Eye_x, float Eye_y, float Eye_z, float Lookat_x, float Lookat_y, float Lookat_z, float Up_x, float Up_y, float Up_z, bool Transpose = true) { SetLookat(CVector3(Eye_x, Eye_y, Eye_z), CVector3(Lookat_x, Lookat_y, Lookat_z), CVector3(Up_x, Up_y, Up_z), Transpose); }
+
+};
+
+class CQuat
 {
-	// parse remainder
-	bool pureVirtual = false;
-	if (position.GetToken().TokenType == Token::Type::Equals)
-	{
-		// pure virtual
-		position.Increment();
-
-		if (position.GetToken().TokenType != Token::Type::Number || position.GetToken().TokenData != "0")
-			return false;
-		position.Increment();
-
-		if (position.GetToken().TokenType != Token::Type::Semicolon)
-			return false;
-		position.Increment();
-
-		pureVirtual = true;
-	}
-	if (position.GetToken().TokenType == Token::Type::Semicolon)
-	{
-		// function definition
-		position.Increment();
-	}
-	else if (position.GetToken().TokenType == Token::Type::LBrace)
-	{
-		// function declaration
-		std::vector<ASTTokenIndex> scopeTokens;
-		if (ParseSpecificScopeInner(position, scopeTokens, Token::Type::LBrace, Token::Type::RBrace, &ASTParser::ASTPosition::FilterComments) == false)
-			return false;
-
-		position.Increment(); // skip rbrace
-
-		ASTNode* subSubNode = new ASTNode();
-		subSubNode->type = "DEFINITION";
-		subSubNode->data.push_back(CombineTokens(this, scopeTokens, ""));
-		varNode->children.push_back(subSubNode);
-	}
-	else if (position.GetToken().TokenType == Token::Type::Comma)
-		return true;
-	else
-		return false;
-
-	return true;
-}
-
-bool ASTParser::ParseClassConstructorDestructor(ASTNode* parent, ASTPosition &cposition, int privatePublicProtected)
-{
-	ASTPosition position = cposition;
-	std::vector<ASTTokenIndex> modifierTokens;
+public:
+    CQuat(float sx = 0.0f, float sy = 0.0f, float sz = 0.0f, float sw = 1.0f);
+    ~CQuat();
 	
-	// parse pre-keyword modifier tokens
-	while (ParseModifierToken(position, modifierTokens)) {}
+	inline void Set(float sx, float sy, float sz, float sw) {x = sx, y = sy, z = sz, w = sw;}
+	CQuat& operator = (CQuat Qt);
+	void Reset();																							//!< Reset the quaternion to the identity quaternion.
 
-	// is this a destructor?
-	bool destructor = false;
-	if (position.GetToken().TokenType == Token::Type::Tilde)
-	{
-		destructor = true;
-		position.Increment();
-	}
+	inline CQuat& operator += (const CQuat& Qt) { x += Qt.x; y += Qt.y; z += Qt.z; w += Qt.w; return *this; }
+	inline CQuat operator + (const CQuat& Qt) const { CQuat qres=*this; qres += Qt; return qres; }
+	inline CQuat& operator -= (const CQuat& Qt) { x -= Qt.x; y -= Qt.y; z -= Qt.z; w -= Qt.w; return *this; }
+	inline CQuat operator - (const CQuat& Qt) const { CQuat qres=*this; qres -= Qt; return qres; }
+	inline CQuat& operator *= (const float Val) { x *= Val; y *= Val; z *= Val; w *= Val; return *this; }
+	inline CQuat operator * (const float Val) const { CQuat qres=*this; qres *= Val; return qres; }
+	CQuat& operator /= (const CQuat& Qt);
+	inline CQuat operator / (const CQuat& Qt) const { CQuat qres=*this; qres /= Qt; return qres; }
+	CQuat& operator *= (const CQuat& Qt);
+	inline CQuat operator * (const CQuat& Qt) const { CQuat qres=*this; qres *= Qt; return qres; }
 
-	if (position.GetToken().TokenType != Token::Type::Keyword)
-		return false;
+	inline CQuat& operator ^= (const CQuat& Qt) { CQuat qRes=Qt; qRes *= (*this); (*this) = qRes; return (*this); }
+	inline CQuat operator ^ (const CQuat& Qt) const { CQuat qres=*this; qres ^= Qt; return qres; }
 
-	if (parent->type != "CLASS")
-		return false;
+	//! Spherical linear interpolation between quaternion q1 and q2 by factor k <0 .. 1>
+	static CQuat Slerp(const CQuat& q1, CQuat q2, float k);
+	//! Normalised linear interpolation between quaternion q1 and q2 by factor k <0 .. 1>
+	static CQuat Nlerp(const CQuat& q1, const CQuat& q2, float k);
 
-	if (position.GetToken().TokenData != parent->data[0])
-		return false;
+	float Dot(const CQuat &q2) const { return w*q2.w+x*q2.x+y*q2.y+z*q2.z; }
+	CQuat Cross(const CQuat &q2) const { CQuat cr; cr.w = 0; cr.x = (y * q2.z) - (z * q2.y); cr.y = (x * q2.z) - (z * q2.x); cr.z = (x * q2.y) - (y * q2.x); return cr; }
 
-	position.Increment();
+	static CQuat CreateShortestArcQuat(const CVector3& From, const CVector3& To) { CQuat q; q.ShortestArcToQuat(From, To); return q;}
+	static CQuat CreateAxisAngleQuat(const CVector3& Axis, float Angle) { CQuat q; q.AxisAngleToQuat(Axis, Angle); return q;}
+	static CQuat CreateEulerQuat(float X, float Y, float Z) { CQuat q; q.EulerToQuat(X, Y, Z); return q;}
+	static CQuat CreateVectorQuat(const CVector3& vec, const CVector3& up=CVector3(0.0f, 0.0f, 1.0f)) { CQuat q; q.VectorToQuat(vec, up); return q; }
 
-	// parse post-keyword modifier tokens
-	while (ParseModifierToken(position, modifierTokens)) {}
+	void ShortestArcToQuat(const CVector3& From, const CVector3& To );
+    void AxisAngleToQuat(const CVector3& Axis, float Angle);
+    void EulerToQuat(float X, float Y, float Z);
+	void VectorToQuat(const CVector3& vec, const CVector3& up=CVector3(0.0f, 0.0f, 1.0f));
 
-	std::unique_ptr<ASTNode> varNode(new ASTNode());
-	if (ParseFunctionRemainder(varNode.get(), position, privatePublicProtected) == false)
-		return false;
+	bool QuatToEuler(float &X, float &Y, float &Z) const;
+	bool QuatToAxisAngle(CVector3& Axis, float& Angle);
 
-	// parse constructor initialization if applicable
-	if (position.GetToken().TokenType == Token::Type::Colon)
-	{
-		if (destructor)
-			throw new std::runtime_error("destructor with initializer list is prohibited");
-		position.Increment();
-		while (ParseConstructorInitializer(varNode.get(), position)) { if(position.GetToken().TokenType == Token::Type::Comma) position.Increment(); }
-	}
+	inline CVector3 EulerRotation() const { CVector3 ret; QuatToEuler(ret.x, ret.y, ret.z); return ret; }
+	inline CVector3 LocalX() const { return CVector3(1.0f - 2.0f * ( y * y + z * z ), 2.0f * ( x * y - w * z ), 2.0f * ( x * z + w * y )); }
+	inline CVector3 LocalY() const { return CVector3(2.0f * ( x * y + w * z ), 1.0f - 2.0f * ( x * x + z * z ), 2.0f * ( y * z - w * x )); }
+	inline CVector3 LocalZ() const { return CVector3(2.0f * ( x * z - w * y ), 2.0f * ( y * z + w * x ), 1.0f - 2.0f * ( x * x + y * y )); }
+	
+	void NegateQuat() { x = -x; y = -y; z = -z; w = -w; } // gives the same rotation but a different quaternion.
+	inline void ConjugateQuat() { x = -x; y = -y; z = -z; }
+	inline void InverseQuat() { NormalizeQuat(); ConjugateQuat();  }
+	void NormalizeQuat() { float rMag = 1.0f/MagnitudeQuat(); w *= rMag; x *= rMag; y *= rMag; z *= rMag; }		//!< set length to 1
+	float MagnitudeQuat() { return( sqrtf(w*w+x*x+y*y+z*z)); }													//!< Get the length of the quaternion.
 
-	// parse final function stage
-	if (ParseFunctionFinalizer(varNode.get(), position, privatePublicProtected) == false)
-		return false;
+	void SetExistingMatrix(CMatrix& M) const;																						//!< get 4x4 rotation matrix
+    CMatrix Matrix() const;																						//!< get 4x4 rotation matrix
+	void FromMatrix(const CMatrix &M);																			//!< 4x4 rotation matrix to quat
+	void FromMatrixSecondary(const CMatrix& M);																	//!< 4x4 rotation matrix to quat - second algorithm
 
-	// everything checked out
+	float xyzw[4];
+	float x,y,z,w;
+};
 
-	// generate type
-	std::unique_ptr<ASTType> varType(new ASTType(this));
-	varType->typeModifiers.swap(modifierTokens);
-	varNode->children.insert(varNode->children.begin(), varType.release());
-
-	if (destructor == false)
-		varNode->type = "CONSTRUCTOR";
-	else
-		varNode->type = "DESTRUCTOR";
-
-	// add visibility
-	if (privatePublicProtected == 0)
-		varNode->data.push_back("private");
-	else if (privatePublicProtected == 1)
-		varNode->data.push_back("public");
-	else if (privatePublicProtected == 2)
-		varNode->data.push_back("protected");
-
-	parent->children.push_back(varNode.release());
-
-	cposition = position;
-	return true;
-}
-
-const std::string& ASTType::GetType() const
+class  CTranslateRotateScale
 {
-	static std::string t = "TYPE"; return t;
-}
+public:
+	CTranslateRotateScale() { Scale.Set(1.0f, 1.0f, 1.0f); }
+	CTranslateRotateScale(const CMatrix& m) { FromMatrix(m); }
+
+	CVector3 Translation;
+	CQuat Rotation;
+	CVector3 Scale;
+
+	void FromMatrix(const CMatrix& m);
+	void ToExistingMatrix( CMatrix& m ) const;
+	CMatrix ToMatrix() const { CMatrix m; ToExistingMatrix(m); return m;}
+	void Concatenate(const CTranslateRotateScale& other);
+
+	static CTranslateRotateScale Interpolate(const CTranslateRotateScale& f1, const CTranslateRotateScale& f2, float factor, bool slerp=false);
+};
 
 
-std::string ASTPointerType::ToString()
-{
-	std::string ret;
-	if (pointerType == Type::Pointer)
-		ret = "*";
-	else 
-		ret = "&";
-	for (auto& it : pointerModifiers)
-		ret += " " + it.TokenData;
-	return ret;
-}
 
+ CVector3 vLerp(const CVector3 &v1,const CVector3 &v2, float fac);
+ CVector3 vCross(const CVector3 &v1,const CVector3 &v2);
+ CVector3 vNormalize(const CVector3 &n);
+ float vDot(const CVector3 &v1,const CVector3 &v2);
+ float vLength(const CVector3 &v1);
 
-std::string ASTType::ToString()
-{
-	std::string ret;
-	for (auto& it : typeModifiers)
-		ret += tokenSource->Tokens[it].TokenData + " ";
-	for (auto& it : typeNamespaces)
-		ret += tokenSource->Tokens[it].TokenData + "::";
-	for (auto& it : typeName)
-		ret += tokenSource->Tokens[it].TokenData + " ";
-	for (auto& it : typePointers)
-		ret += it.ToString() + " ";
-	for (auto& it : typeArrayTokens)
-	{
-		ret += "[";
-		for (auto& it2 : it)
-			ret += tokenSource->Tokens[it2].TokenData;
-		ret += "]";
-	}
-		
+inline CQuat qCross(CQuat &q1, CQuat &q2) { return q1.Cross(q2); }
+inline float qDot(CQuat &q1, CQuat &q2) { return q1.Dot(q2); }
 
-	return ret;
+ float AngularDiffRadians(float a, float b);
+ float AngularDiff(float a, float b);
 
-}
-const std::vector<std::string>& ASTType::GetData()
-{
-	data.clear();
-	data.push_back(ToString());
-	return data;
-}
-
-
-#pragma region ASTPosition
-void ASTParser::ASTPosition::Increment(int count/*=1*/, bool(*filterAllows)(Token& token)/*=0*/)
-{
-	for (int i = 0; i < count; i++)
-	{
-		// check whether we are at the end of the token stream
-		if (Position + 1 >= Parser.Tokens.size())
-			break;
-
-		++Position;
-
-		if (filterAllows(GetToken()) == false)
-		{
-			// this token is filtered, go to the next
-			i--;
-		}
-	}
-}
-
-ASTParser::ASTPosition::ASTPosition( ASTParser& parser ) : Parser(parser)
-{
-	Position = 0;
-}
-
-Token& ASTParser::ASTPosition::GetNextToken()
-{
-	Increment();
-
-	return Parser.Tokens[Position];
-}
-
-Token& ASTParser::ASTPosition::GetToken()
-{
-	return Parser.Tokens[Position];
-}
-
-#pragma endregion
+static float InvSqrt(float x) {	return 1.0f/sqrtf(x); }

@@ -102,9 +102,15 @@ ASTParser::ASTParser( Tokenizer& fromTokenizer )
 
 bool ASTParser::Parse( ASTNode* parent, ASTPosition& position)
 {
-	while(ParseRoot(parent, position)) 
+	while(true) 
 	{ 
+		if (ParseEndOfStream(parent, position))
+			break;
 
+		if (ParseRoot(parent, position))
+			continue;
+
+		ParseUnknown(parent, position);
 	}
 
 	return true;
@@ -112,11 +118,19 @@ bool ASTParser::Parse( ASTNode* parent, ASTPosition& position)
 
 bool ASTParser::ParseRoot( ASTNode* parent, ASTPosition& position )
 {
-	if(ParseEndOfStream(parent, position))
+	if(ParseEnum(parent, position))
 	{
-		return false; // EOF
+		return true;
 	}
-	else if(ParseEnum(parent, position))
+	else if (ParseTemplate(parent, position))
+	{
+		return true;
+	}
+	else if (ParseUsing(parent, position))
+	{
+		return true;
+	}
+	else if (ParseNamespace(parent, position))
 	{
 		return true;
 	}
@@ -124,12 +138,17 @@ bool ASTParser::ParseRoot( ASTNode* parent, ASTPosition& position )
 	{
 		return true;
 	}
-	else if (ParseDeclaration(1, parent, position))
+	else if (ParseDeclaration(parent, position))
 	{
 		return true;
 	}
 	else if (ParsePreprocessor(parent, position))
 	{
+		return true;
+	}
+	else if (position.GetToken().TokenType == Token::Type::Semicolon) // valid tokens with no meaning
+	{
+		position.Increment();
 		return true;
 	}
 	else if(ParseIgnored(parent, position))
@@ -138,7 +157,182 @@ bool ASTParser::ParseRoot( ASTNode* parent, ASTPosition& position )
 	}
 
 
-	return ParseUnknown(parent, position);
+	return false;
+}
+
+bool ASTParser::ParseTemplate(ASTNode* parent, ASTPosition& cposition)
+{
+	ASTPosition position = cposition;
+
+	// parse template
+	if (position.GetToken().TokenType != Token::Type::Template)
+		return false;
+	position.Increment();
+
+	// parse <
+	if (position.GetToken().TokenType != Token::Type::LArrow)
+		return false;
+	position.Increment();
+
+	// create template tree
+	std::unique_ptr<ASTNode> subNode(new ASTNode());
+	subNode->type = "TEMPLATE";
+
+	// create arguments tree
+	std::unique_ptr<ASTNode> subNodeArgs(new ASTNode());
+	subNodeArgs->type = "TEMPLATE_ARGS";
+
+	while (true)
+	{
+		std::unique_ptr<ASTType> subType(new ASTType(this));
+
+		// TODO: Support nested template definitions
+
+		if (ParseDeclarationHead(parent, position, subType.get()) == false)
+			return false;
+
+		ParseDeclarationSub(parent, position, subType.get());
+		subType->type = "DCL_HEAD_SUB";
+		subNodeArgs->AddNode(subType.release());
+
+		if (position.GetToken().TokenType == Token::Type::Comma)
+		{
+			position.Increment();
+			continue;
+		}
+		else break;
+	}
+
+	if (position.GetToken().TokenType != Token::Type::RArrow)
+		return false;
+
+	position.Increment();
+
+	// parsed template definition
+
+	// create arguments tree
+	std::unique_ptr<ASTNode> subNodeContent(new ASTNode());
+	subNodeContent->type = "TEMPLATE_CONTENT";
+
+	if (ParseClass(subNodeContent.get(), position))
+	{
+	}
+	else if (ParseDeclaration( subNodeContent.get(), position))
+	{
+	}
+	else
+		return false; // unknown definition
+
+
+	// finalize - everything went right.
+	//  add nodes to tree
+	subNode->AddNode(subNodeArgs.release());
+	subNode->AddNode(subNodeContent.release());
+	parent->AddNode(subNode.release());
+
+	cposition = position;
+	return true;
+}
+
+bool ASTParser::ParseNamespace(ASTNode* parent, ASTPosition& cposition)
+{
+	ASTPosition& position = cposition;
+
+	if (position.GetToken().TokenType != Token::Type::Namespace)
+		return false;
+
+	position.Increment();
+
+
+	// create namespace tree
+	std::unique_ptr<ASTNode> subNode(new ASTNode());
+	subNode->type = "NAMESPACE";
+	if (position.GetToken().TokenType == Token::Type::Keyword)
+	{
+		subNode->data.push_back(position.GetToken().TokenData);
+		position.Increment();
+	}
+	else if (position.GetToken().TokenType == Token::Type::LBrace)
+	{
+	}
+	else
+	{
+		throw std::runtime_error("expected left brace after namespace keyword");
+		return false; // redundant
+	}
+
+
+	position.Increment();
+
+	while (true)
+	{
+		// parse inner namespace
+
+		if (ParseEndOfStream(subNode.get() , position))
+			return false; // should not reach end of file
+
+		if (ParseRoot(subNode.get(), position))
+			continue;
+
+		if (position.GetToken().TokenType == Token::Type::RBrace)
+			break; // reached namespace end
+
+		// unknown tokens found; skip
+		ParseUnknown(subNode.get(), position);
+	}
+
+	// skip past final "right brace" (})
+	position.Increment();
+
+	parent->AddNode(subNode.release());
+
+	return true;
+
+}
+
+bool ASTParser::ParseUsing(ASTNode* parent, ASTPosition& cposition)
+{
+	ASTPosition& position = cposition;
+
+	if (position.GetToken().TokenType != Token::Type::Using)
+		return false;
+
+	// create tree
+	std::unique_ptr<ASTNode> subNode(new ASTNode());
+	if (position.GetNextToken().TokenType == Token::Type::Namespace)
+	{
+		subNode->type = "USING_NAMESPACE";
+		position.Increment();
+	}
+	else
+	{
+		subNode->type = "USING";
+	}
+
+	// check whether using <namespace> is followed by a keyword or a double colon.
+	if (position.GetToken().TokenType != Token::Type::Keyword && position.GetToken().TokenType != Token::Type::Doublecolon)
+		return false;
+
+	do
+	{
+		if (position.GetToken().TokenType == Token::Type::Doublecolon)
+		{
+			subNode->data.push_back(position.GetToken().TokenData);
+			position.Increment();
+		}
+
+		subNode->data.push_back(position.GetToken().TokenData);
+		position.Increment();
+
+	} while (position.GetToken().TokenType == Token::Type::Doublecolon);
+	
+	if (position.GetToken().TokenType != Token::Type::Semicolon)
+		throw std::runtime_error("expected semicolon to finish using namespace declaration (using namespace <definition>;)");
+
+	parent->AddNode(subNode.release());
+	cposition = position;
+	return true;
+
 }
 
 bool ASTParser::ParsePreprocessor(ASTNode* parent, ASTPosition& position)
@@ -158,23 +352,23 @@ bool ASTParser::ParsePreprocessor(ASTNode* parent, ASTPosition& position)
 			position.Increment(1, ASTPosition::FilterNone);
 		}
 
-		printf(" * ignoring preprocessor directive: \"%s\"\n", CombineTokens(this, preprocessorTokens, "").c_str());
+		if (Verbose)
+			printf(" * ignoring preprocessor directive: \"%s\"\n", CombineTokens(this, preprocessorTokens, "").c_str());
 		return true;
 	}
 
 	return false;
 }
 
-
 bool ASTParser::ParseEnum( ASTNode* parent, ASTPosition& position )
 {
-	std::unique_ptr<ASTNode> subNode(new ASTNode());
-	subNode->type = "ENUM";
-
 	if(position.GetToken().TokenType != Token::Type::Enum)
 		return false;
 
 	position.Increment();
+
+	std::unique_ptr<ASTNode> subNode(new ASTNode());
+	subNode->type = "ENUM";
 
 	if(position.GetToken().TokenType == Token::Type::Class)
 	{
@@ -211,7 +405,7 @@ bool ASTParser::ParseEnum( ASTNode* parent, ASTPosition& position )
 	position.Increment();
 
 	// store subnode
-	parent->children.push_back(subNode.release());
+	parent->AddNode(subNode.release());
 	return true;
 }
 
@@ -237,10 +431,10 @@ bool ASTParser::ParseEnumDefinition( ASTNode* parent, ASTPosition& position )
 		subSubNode->type = "INIT";
 
 		subSubNode->data.push_back(CombineWhile_ScopeAware(position, [] ( ASTPosition& position) { return position.GetToken().TokenType != Token::Type::Comma && position.GetToken().TokenType != Token::Type::RBrace && position.GetToken().TokenType != Token::Type::Semicolon; }, &ASTParser::ASTPosition::FilterComments));
-		subNode->children.push_back(subSubNode.release());
+		subNode->AddNode(subSubNode.release());
 	}
 	// store subnode
-	parent->children.push_back(subNode.release());
+	parent->AddNode(subNode.release());
 	return true;
 }
 
@@ -257,9 +451,10 @@ bool ASTParser::ParseIgnored( ASTNode* parent, ASTPosition& position )
 
 bool ASTParser::ParseUnknown( ASTNode* parent, ASTPosition& position )
 {
-	printf(" token: %d (type: %d, line: %d): %s\n", position.Position, position.GetToken().TokenType, position.GetToken().TokenLine, position.GetToken().TokenData.c_str());
+	if (Verbose)
+		printf("no grammar match for token: %d (type: %d, line: %d): %s\n", position.Position, position.GetToken().TokenType, position.GetToken().TokenLine, position.GetToken().TokenData.c_str());
 	position.Increment();
-	return true;
+	return false;
 }
 
 bool ASTParser::ParseEndOfStream( ASTNode* parent, ASTPosition& position )
@@ -269,6 +464,8 @@ bool ASTParser::ParseEndOfStream( ASTNode* parent, ASTPosition& position )
 
 	return false;
 }
+
+
 
 bool ASTParser::ParseClassInheritance(int &inheritancePublicPrivateProtected, ASTNode* parent, ASTPosition& cposition)
 {
@@ -302,7 +499,7 @@ bool ASTParser::ParseClassInheritance(int &inheritancePublicPrivateProtected, AS
 		subNode->data.push_back("protected");
 
 	subNode->data.push_back(position.GetToken().TokenData);
-	parent->children.push_back(subNode);
+	parent->AddNode(subNode);
 	position.Increment();
 	cposition = position;
 	return true;
@@ -310,19 +507,38 @@ bool ASTParser::ParseClassInheritance(int &inheritancePublicPrivateProtected, AS
 
 bool ASTParser::ParseClass( ASTNode* parent, ASTPosition& position )
 {
-	if(position.GetToken().TokenType != Token::Type::Class)
+	if (position.GetToken().TokenType != Token::Type::Class && position.GetToken().TokenType != Token::Type::Struct)
 		return false;
 
 	int privatePublicProtected = 0;
+	if (position.GetToken().TokenType == Token::Type::Struct)
+		privatePublicProtected = 1; // struct is default public
+
 	std::unique_ptr<ASTNode> subNode(new ASTNode());
-	subNode->type = "CLASS";
-
-	if(position.GetNextToken().TokenType != Token::Type::Keyword)
-		throw std::runtime_error("expected class name after class definition");
-
-	subNode->data.push_back(position.GetToken().TokenData);
+	std::unique_ptr<ASTNode> initialScopeNode(new ASTNode());
+	ASTNode* currentScope = initialScopeNode.get();
+	bool isStruct = false;
+	if (position.GetToken().TokenType == Token::Type::Class)
+	{
+		subNode->type = "CLASS";
+		initialScopeNode->type = "PRIVATE";
+	}
+	else if (position.GetToken().TokenType == Token::Type::Struct)
+	{
+		subNode->type = "STRUCT";
+		initialScopeNode->type = "PUBLIC";
+		isStruct = true;
+	}
+	else
+		return false;
 
 	position.Increment();
+
+	if (position.GetToken().TokenType == Token::Type::Keyword)
+	{
+		subNode->data.push_back(position.GetToken().TokenData);
+		position.Increment();
+	}
 
 	if(position.GetToken().TokenType == Token::Type::LBrace)
 	{
@@ -345,23 +561,52 @@ bool ASTParser::ParseClass( ASTNode* parent, ASTPosition& position )
 				break; 
 		}
 	}
+	else if (position.GetToken().TokenType == Token::Type::Semicolon)
+	{
+		if (isStruct)
+			subNode->type = "STRUCT_FORWARD_DECLARATION";
+		else
+			subNode->type = "CLASS_FORWARD_DECLARATION";
+		position.Increment();
+		parent->AddNode(subNode.release());
+		return true;
+	}
 	else
 		throw std::runtime_error("expected left brace after class name");
+
+	// add default scope node - class definition will be parsed here
+	initialScopeNode->data.push_back("initial");
+	subNode->AddNode(initialScopeNode.release());
 
 	position.Increment();
 
 	while(true)
 	{
-		if(ParsePrivatePublicProtected(privatePublicProtected, subNode.get(), position)) {}
-		else if(ParseDeclaration(privatePublicProtected, subNode.get(), position)) {}
-		else if (ParseClassConstructorDestructor(subNode.get(), position, privatePublicProtected)) {}
-		//else if(ParseFunction(privatePublicProtected, subNode.get(), position)) {} // subclass
-		else if(ParseClass(subNode.get(), position)) {} // subclass
-		else if(ParseEnum(subNode.get(), position)) {} // sub enum
+		if(ParsePrivatePublicProtected(privatePublicProtected, position)) 
+		{
+			// new scope
+			currentScope = new ASTNode();
+			if (privatePublicProtected == 0)
+				currentScope->type = "PRIVATE";
+			if (privatePublicProtected == 1)
+				currentScope->type = "PUBLIC";
+			if (privatePublicProtected == 2)
+				currentScope->type = "PROTECTED";
+			currentScope->data.push_back("subsequent");
+			subNode->AddNode(currentScope);
+		}
+		else if (ParseTemplate(currentScope, position)) {} // subclass
+		else if (ParseClass(currentScope, position)) {} // subclass
+		else if (ParseDeclaration(currentScope, position)) {}
+		else if (ParseEnum(currentScope, position)) {} // sub enum
+		else if (position.GetToken().TokenType == Token::Type::Semicolon)
+			position.Increment(); // skip stray semicolons
 		else if(position.GetToken().TokenType == Token::Type::RBrace)
 			break;
 		else
-			position.Increment();
+		{
+			ParseUnknown(currentScope, position);
+		}
 	}
 
 	if(position.GetNextToken().TokenType != Token::Type::Semicolon)
@@ -370,11 +615,11 @@ bool ASTParser::ParseClass( ASTNode* parent, ASTPosition& position )
 	position.Increment();
 
 	// store subnode
-	parent->children.push_back(subNode.release());
+	parent->AddNode(subNode.release());
 	return true;
 }
 
-bool ASTParser::ParsePrivatePublicProtected(int& privatePublicProtected,  ASTNode* parent, ASTPosition& cposition )
+bool ASTParser::ParsePrivatePublicProtected(int& privatePublicProtected, ASTPosition& cposition )
 {
 	ASTPosition position = cposition;
 
@@ -422,7 +667,6 @@ enum class ASTFunctionType
 	Operator
 };
 
-
 bool ASTParser::ParseConstructorInitializer(ASTNode* parent, ASTPosition& cposition)
 {
 	ASTPosition position = cposition;
@@ -447,272 +691,261 @@ bool ASTParser::ParseConstructorInitializer(ASTNode* parent, ASTPosition& cposit
 	position.Increment(); // skip rparen
 
 	// everything checked out - add constructor initializer node
-	std::unique_ptr<ASTNode> subNode = std::unique_ptr<ASTNode>(new ASTNode);
-	subNode->type = "CONSTRUCTOR_INITIALIZER";
-	subNode->data.push_back(name);
-	subNode->data.push_back(CombineTokens(this, scopeTokens, ""));
-	parent->children.push_back(subNode.release());
+	parent->data.push_back(name);
+	parent->data.push_back(CombineTokens(this, scopeTokens, ""));
 
 	// advance position to current and return success
 	cposition = position;
 	return true;
 }
 
-
-bool ASTParser::ParseSubType(int privatePublicProtected, std::unique_ptr<ASTNode>& varNode, ASTPosition &position, std::unique_ptr<ASTType> &varType, int mode)
+bool ASTParser::ParseDeclarationHead(ASTNode* parent, ASTPosition& cposition, ASTType* type)
 {
-	if (mode == SUBTYPE_MODE_SUBARGUMENT)
+	ASTType tempType(this);
+	ASTPosition position = cposition;
+	bool valid = true;
+
+	if (ParseNTypeBase(position, &tempType) == false)
 	{
-		// parse base type
-		if (ParseNTypeBase(position, varType.get()) == false)
-			return false;
-	}
+		// only take modifiers - head identifier/type must be incorrect
+		std::vector<ASTTokenIndex> modifierTokens;
+		while (ParseModifierToken(cposition, modifierTokens)) { modifierTokens.clear(); }
+		type->typeModifiers = tempType.typeModifiers;
 
-	// TODO: ignore template definition for now - fix this
-	std::vector<ASTTokenIndex> templateScopeTokens;
-	if (ParseSpecificScopeInner(position, templateScopeTokens, Token::Type::LArrow, Token::Type::RArrow, &ASTPosition::FilterWhitespaceComments))
-	{
-		position.Increment();
-	}
-
-	// make preamble of variable
-	if (privatePublicProtected == 0)
-		varNode->data.push_back("private");
-	if (privatePublicProtected == 1)
-		varNode->data.push_back("public");
-	if (privatePublicProtected == 2)
-		varNode->data.push_back("protected");
-
-	// parse pointers and references into type
-	ParseNTypePointersAndReferences(position, varType.get());
-
-	if (mode == SUBTYPE_MODE_SUBVARIABLE && position.GetToken().TokenType != Token::Type::Keyword && position.GetToken().TokenType != Token::Type::Operator) // subvariable must have identifier
 		return false;
+	}
 
-	// get variable name if available
-	if (position.GetToken().TokenType == Token::Type::Keyword || position.GetToken().TokenType == Token::Type::Operator)
+	if (position.GetToken().TokenType == Token::Type::LArrow)
 	{
-		// store variable name
-		bool isOperator = position.GetToken().TokenType == Token::Type::Operator;
-		std::vector<ASTTokenIndex> nameTokens;
-		nameTokens.push_back(position.GetTokenIndex());
-		position.Increment();
+		// parse template arguments
+		std::unique_ptr<ASTNode> argNode(new ASTNode());
+		if (ParseDeclarationSubArgumentsScoped(position, argNode.get(), Token::Type::LArrow, Token::Type::RArrow) == false)
+			return false; // it must be a pointer instead? (e.g. void (*test); );
 
-		// parse namespaces
-		while (position.GetToken().TokenType == Token::Type::Doublecolon)
-		{
-			nameTokens.push_back(position.GetTokenIndex()); // add doublecolon
-			position.Increment();
+		argNode->type = "DCL_TEMPLATE_ARGS";
+		type->AddNode(argNode.release());
+	}
 
-			nameTokens.push_back(position.GetTokenIndex()); // add identifier
-			if (position.GetToken().TokenType == Token::Type::Operator)
-			{
-				isOperator = true;
-				position.Increment();
-				break; // process operator later
-			}
-			if (position.GetToken().TokenType != Token::Type::Keyword)
-				return false;
-			position.Increment();
-		}
+	// apply type and return true
+	type->typeNamespaces = tempType.typeNamespaces;
+	type->typeName = tempType.typeName;
+	type->typeModifiers = tempType.typeModifiers;
+	type->StealNodesFrom(&tempType);
+	cposition = position;
+	return true;
+}
 
-		varNode->data.push_back(CombineTokens(this, nameTokens, ""));
+bool ASTParser::ParseDeclarationSub(ASTNode* parent, ASTPosition& cposition, ASTType* type, bool requireIdentifier)
+{
+	ASTPosition position = cposition;
+	if (ParseNTypeFunctionPointer(position, type))
+	{
+		// function pointer parsed, parse function pointer arguments
 
-		if (isOperator)
-		{
-			std::vector<ASTTokenIndex> operatorTokens;
-			if (ParseFunctionOperatorType(varNode.get(), position, operatorTokens) == false)
-				return false;
+		std::unique_ptr<ASTNode> argNode(new ASTNode());
 
-			varNode->data.push_back(CombineTokens(this, operatorTokens, ""));
-		}
+		if (ParseDeclarationSubArgumentsScoped(position, argNode.get(), Token::Type::LParen, Token::Type::RParen) == false)
+			return false; // it must be a pointer instead? (e.g. void (*test); );
+
+		argNode->type = "DCL_FPTR_ARGS";
+		type->AddNode(argNode.release());
 	}
 	else
 	{
-		varNode->data.push_back("");
+		// parse pointers/references & pointer modifiers
+		ParseNTypePointersAndReferences(position, type, false);
+
+		// parse identifier if present
+		bool hasIdent = ParseNTypeIdentifier(position, type);
+		if (requireIdentifier && hasIdent == false)
+			return false;
+
+		// parse array tokens if present
+		ParseNTypeArrayDefinitions(position, type);
 	}
 
-	// parse array definitions
-	ParseNTypeArrayDefinitions(position, varType.get());
+	// parse function arguments if present
+	if (position.GetToken().TokenType == Token::Type::LParen)
+	{
+		std::unique_ptr<ASTNode> argNode(new ASTNode());
+		if (ParseDeclarationSubArgumentsScoped(position, argNode.get(), Token::Type::LParen, Token::Type::RParen) == false)
+			return false; // invalid function arguments
 
-	// assignment
+		argNode->type = "DCL_FUNC_ARGS";
+		type->AddNode(argNode.release());
+
+		if (position.GetToken().TokenType == Token::Type::Const)
+		{
+			ASTNode* constFunc = new ASTNode();
+			constFunc->type = "DCL_FUNC_MOD_CONST";
+			type->AddNode(constFunc);
+			position.Increment();
+		}
+	}
+
+	// parse assignment
 	if (position.GetToken().TokenType == Token::Type::Equals)
 	{
 		position.Increment();
 
-		// add initialization clause
-		ASTNode* subSubNode = new ASTNode();
-		subSubNode->type = "INIT";
+		ASTNode* subNode = new ASTNode();
+		subNode->type = "INIT";
 
-		subSubNode->data.push_back(CombineWhile_ScopeAware(position, [](ASTPosition& position) { return position.GetToken().TokenType != Token::Type::Semicolon && position.GetToken().TokenType != Token::Type::Comma; }, &ASTParser::ASTPosition::FilterComments));
-		varNode->children.push_back(subSubNode);
+		subNode->data.push_back(CombineWhile_ScopeAware(position, [](ASTPosition& position) { return position.GetToken().TokenType != Token::Type::Semicolon && position.GetToken().TokenType != Token::Type::Comma; }, &ASTParser::ASTPosition::FilterComments));
+		type->AddNode(subNode);
 	}
 
-	// TODO: templates
-	if (templateScopeTokens.size() > 0)
-		printf(" * ignoring template scope: %s\n", CombineTokens(this, templateScopeTokens, "").c_str());
-
+	cposition = position;
 	return true;
 }
 
-bool ASTParser::ParseFunctionArguments(ASTNode* varNode, int privatePublicProtected, ASTPosition &cposition)
+/*
+// 1. HEAD|SUB
+// 2. HEAD|SUB_FP(HEAD|SUB,HEAD|SUB,HEAD,HEAD...)
+// 3. HEAD|SUB_FP(HEAD|SUB,HEAD|SUB,HEAD,HEAD...)(HEAD|SUB,HEAD,...)
+
+// 1.
+// HEAD
+//	   SUB
+
+// 2.
+// HEAD
+//	   SUB
+//		   HEAD
+//			  SUB
+//		   HEAD
+//		      SUB
+//         HEAD
+//         HEAD
+
+
+//  |operator int();
+//	void|(*localFP)(int|(*a)(),float|),*test;
+//	float|A(),B(),c;
+//	std::float|A(),B(),c;
+//	std::vector<int>|A(), B(), c;
+*/
+
+bool ASTParser::ParseDeclaration(ASTNode* parent, ASTPosition& cposition)
 {
+	// parse
+	// HEAD
+	// then SUB,SUB,SUB,... until
+	// ; or { FUNCTION_DEFINITION } or : CONSTRUCTOR_INITIALIZER { FUNCTION_DEFINITION }
+
 	ASTPosition position = cposition;
-	// find all function arguments
-	while (true)
+	std::unique_ptr<ASTType> headType(new ASTType(this));
+	int lastSubID = -1;
+	
+	ASTPosition beforeHeadPosition = position;
+	ParseDeclarationHead(parent, position, headType.get());
+
+	int subCount = 0;
+	do 
 	{
-		std::unique_ptr<ASTNode> argNode(new ASTNode());
-		std::unique_ptr<ASTType> argType(new ASTType(this));
-		if (ParseSubType(privatePublicProtected, argNode, position, argType, SUBTYPE_MODE_SUBARGUMENT) == false)
-			break;
+		std::unique_ptr<ASTType> subtype(new ASTType(this));
+		subtype->typeIdentifier.clear();
 
-		argNode->type = "ARGUMENT";
-		argNode->children.push_back(argType.release());
-		varNode->children.push_back(argNode.release());
+		if (ParseDeclarationSub(parent, position, subtype.get(), true) == false)
+		{
+			// sub parsing failed - this might be because the head parsing was invalid.. let's find out..
+			// P.S. we can't explicitly check whether the head is correct or not since we don't know anything about types (everything is a keyword or a built-in type), so we have to make some educated guesses.
+			//  -- then again, if a better way can be found than this method, by all means contribute :)
 
+			if (subCount == 0)
+			{
+				// skip modifier tokens for sub parsing
+				std::vector<ASTTokenIndex> dummy;
+				while (ParseModifierToken(beforeHeadPosition, dummy)) dummy.clear();
+			}
+
+			// try parse again when iteration 0 but pretend the head was not valid..
+			std::unique_ptr<ASTType> subtype2(new ASTType(this));
+			if (subCount == 0 && ParseDeclarationSub(parent, beforeHeadPosition, subtype2.get(), true))
+			{	
+				// it probably was since we can parse the sub now - clear head types
+				headType.get()->typeName.clear();
+				headType.get()->typeNamespaces.clear();
+				position = beforeHeadPosition;
+				subtype = std::move(subtype2);
+			}
+			else 
+				return false;
+		}
+		subCount++;
+
+		// apply to head type children
+		subtype->type = "DCL_SUB";
+		lastSubID = headType->m_children.size();
+		headType->AddNode(subtype.release());
+		
 		if (position.GetToken().TokenType == Token::Type::Comma)
 		{
 			position.Increment();
 			continue;
 		}
-		else if (position.GetToken().TokenType == Token::Type::RParen)
-		{
-			break;
-		}
-		else
-			return false; // not actually a function definition, or one with an error.
 
-	};
+		// stop iterating
+		break;
+	} while(true);
 
-	position.Increment();
-	cposition = position;
-	return true;
-}
-
-bool ASTParser::ParseDeclaration( int privatePublicProtected, ASTNode* parent, ASTPosition& cposition )
-{
-	ASTPosition position = cposition;
-	std::unique_ptr<ASTType> subTypeBase(new ASTType(this));
-
-	// exclude operators when found
-	if (position.GetToken().TokenType != Token::Type::Operator)
+	if (position.GetToken().TokenType == Token::Type::Colon)
 	{
-		// parse type
-		if (ParseNTypeBase(position, subTypeBase.get()) == false)
-			return false;
-	}
 
 
-	// parse partial variables
-	std::vector<std::unique_ptr<ASTNode>> subNodes;
-	while(true) 
-	{ 
-		std::unique_ptr<ASTNode> varNode(new ASTNode()); 
-		std::unique_ptr<ASTType> varType(new ASTType(*subTypeBase.get()));
-
-		if (ParseSubType(privatePublicProtected, varNode, position, varType, SUBTYPE_MODE_SUBVARIABLE) == false)
-			return false;
-
-		if (position.GetToken().TokenType == Token::Type::LParen)
+		while (true)
 		{
-			// function found.
-			varNode->type = "FUNCTION";
-			if (ParseFunctionRemainder(varNode.get(), position, privatePublicProtected) == false)
+			std::unique_ptr<ASTNode> nd(new ASTNode());
+			nd->type = "DCL_FUNC_CONSTRUCTOR_INITIALIZER";
+
+			if (position.GetToken().TokenType == Token::Type::Colon || position.GetToken().TokenType == Token::Type::Comma)
+				position.Increment(); // skip past : or ,
+			else if (position.GetToken().TokenType == Token::Type::LBrace || position.GetToken().TokenType == Token::Type::Semicolon)
+				break;
+			else
+				throw std::runtime_error("unexpected token in function constructor initializer");
+
+			if (ParseConstructorInitializer(nd.get(), position) == false)
 				return false;
 
-			if (ParseFunctionFinalizer(varNode.get(), position, privatePublicProtected) == false)
-				return false;
-
-			
-			varNode->children.insert(varNode->children.begin(), varType.release());
-			subNodes.push_back(std::move(varNode));
-
-			if (position.GetToken().TokenType == Token::Type::Comma)
-			{
-				// another function is defined
-				position.Increment();
-				continue;
-			}
-
-
-			break;
+			if (lastSubID == -1)
+				headType->AddNode(nd.release());
+			else
+				headType->m_children[lastSubID]->AddNode(nd.release());
 		}
-		else
-		{
-			// should be a variable
-			varNode->type = "VARIABLE";
 
-			// check whether the variable is not invalid
-			if (Tokens[varType->typeName[0]].TokenType == Token::Type::Void && varType->typePointers.size() == 0)
-				throw std::runtime_error("Variables can not be of void type");
-		}
-		
-		// check for more or terminator
-		if(position.GetToken().TokenType == Token::Type::Comma)
-		{
-			// loop again, we should have another variable
-			position.Increment();
-
-			varNode->children.insert(varNode->children.begin(), varType.release());
-			subNodes.push_back(std::move(varNode));
-			continue;
-		}
-		else if(position.GetToken().TokenType == Token::Type::Semicolon)
-		{
-			// end of declaration
-			position.Increment();
-
-			varNode->children.insert(varNode->children.begin(), varType.release());
-			subNodes.push_back(std::move(varNode));
-			break; // end of statement - variable(s) parsed successfully
-		}
-		else
-		{
-			return false; // not a valid variable construct
-		}
 	}
 
-	// everything went smoothly - store and return success
-	cposition = position;
-	for (auto& it : subNodes)
-		parent->children.push_back(it.release());
-	return true;
-}
-
-bool ASTParser::ParsePointerReferenceSymbol( ASTPosition &cposition, std::vector<Token> &pointerTokens, std::vector<Token> &pointerModifierTokens )
-{
-	bool isReference = false;
-	ASTPosition position(cposition);
-	Token ptrToken;
-
-	if(position.GetToken() == Token::Type::Asterisk || position.GetToken() == Token::Type::Ampersand)
+	if (position.GetToken().TokenType == Token::Type::LBrace)
 	{
-		ptrToken = position.GetToken();
-	}
-	else
-	{
-		return false;
-	}
-	position.Increment();
+		// function declaration
+		std::vector<ASTTokenIndex> functionDeclarationTokens;
+		if (ParseSpecificScopeInner(position, functionDeclarationTokens, Token::Type::LBrace, Token::Type::RBrace, &ASTPosition::FilterNone) == false)
+			return false;
 
-	// check for pointer/reference modifiers
-	while(position.GetToken() == Token::Type::Const || position.GetToken() == Token::Type::Volatile)
-	{
-		if(ptrToken == Token::Type::Ampersand)
-			throw std::exception("modifiers (const/volatile) are not allowed on a reference");
-
-		if(position.GetToken() == Token::Type::Const) // const applies to the thing to the left (so it could apply to the pointer)
-			pointerModifierTokens.push_back(position.GetToken());
-		if(position.GetToken() == Token::Type::Volatile) // volatile applies to the thing to the left (so it could apply to the pointer)
-			pointerModifierTokens.push_back(position.GetToken());
-
+		// continue past final RBrace
 		position.Increment();
-	}
 
-	// parse succeeded
+		ASTNode* nd = new ASTNode();
+		nd->type = "DCL_FUNC_DECLARATION";
+		nd->data.push_back(CombineTokens(this, functionDeclarationTokens, ""));
+		if (lastSubID == -1)
+			headType->AddNode(nd);
+		else
+			headType->m_children[lastSubID]->AddNode(nd);
+		
+	}
+	else if (position.GetToken().TokenType == Token::Type::Semicolon)
+		position.Increment();
+	else
+		return false;
+	
+	// push to list
+	headType->type = "DCL_HEAD";
+	parent->AddNode(headType.release());
 	cposition = position;
-	pointerTokens.push_back(ptrToken);
 	return true;
+
 }
 
 bool ASTParser::ParseSpecificScopeInner(ASTPosition& cposition, std::vector<ASTTokenIndex> &insideBracketTokens, Token::Type tokenTypeL, Token::Type tokenTypeR, bool(*filterAllows)(Token& token) /*= &ASTPosition::FilterWhitespaceComments*/)
@@ -754,7 +987,7 @@ bool ASTParser::ParseSpecificScopeInner(ASTPosition& cposition, std::vector<ASTT
 	return true;
 }
 
-bool ASTParser::ParseFunctionOperatorType(ASTNode* parent, ASTPosition& cposition, std::vector<ASTTokenIndex>& ctokens)
+bool ASTParser::ParseOperatorType(ASTNode* parent, ASTPosition& cposition, std::vector<ASTTokenIndex>& ctokens)
 {
 	std::vector<ASTTokenIndex> tokens;
 	ASTPosition position = cposition;
@@ -803,6 +1036,8 @@ bool ASTParser::ParseModifierToken(ASTPosition& position, std::vector<ASTTokenIn
 		modifierTokens.push_back(position.GetTokenIndex());
 	else if (position.GetToken().TokenType == Token::Type::Inline)
 		modifierTokens.push_back(position.GetTokenIndex());
+	else if (position.GetToken().TokenType == Token::Type::ForceInline)
+		modifierTokens.push_back(position.GetTokenIndex());
 	else if (position.GetToken().TokenType == Token::Type::Extern)
 		modifierTokens.push_back(position.GetTokenIndex());
 	else if (position.GetToken().TokenType == Token::Type::Virtual)
@@ -820,6 +1055,7 @@ bool ASTParser::ParseModifierToken(ASTPosition& position, std::vector<ASTTokenIn
 	position.Increment();
 	return true;
 }
+
 bool ASTParser::ParseNTypeBase(ASTPosition &position, ASTType* typeNode)
 {
 	std::vector<ASTTokenIndex>& typeTokens = typeNode->typeName;
@@ -848,6 +1084,11 @@ bool ASTParser::ParseNTypeBase(ASTPosition &position, ASTType* typeNode)
 			else
 				return false; // invalid - type has already been set to a keyword
 		}
+		else if ((position.GetToken().TokenType == Token::Type::Typename || position.GetToken().TokenType == Token::Type::Class) && typeWordIndex == -1)
+		{
+			typeTokens.push_back(position.GetTokenIndex());
+			typeWordIndex = typeTokens.size() - 1;
+		}
 		else if (ParseModifierToken(position, modifierTokens))
 			continue;
 		else if (position.GetToken().TokenType == Token::Type::Doublecolon)
@@ -874,7 +1115,7 @@ bool ASTParser::ParseNTypeBase(ASTPosition &position, ASTType* typeNode)
 	return true;
 }
 
-bool ASTParser::ParseNTypeSinglePointersAndReferences(ASTPosition &cposition, ASTType* typeNode)
+bool ASTParser::ParseNTypeSinglePointersAndReferences(ASTPosition &cposition, ASTType* typeNode, bool fp)
 {
 	bool isReference = false;
 	ASTPosition position(cposition);
@@ -913,14 +1154,18 @@ bool ASTParser::ParseNTypeSinglePointersAndReferences(ASTPosition &cposition, AS
 	// parse succeeded
 	cposition = position;
 	ptrData.pointerToken = ptrToken;
-	typeNode->typePointers.push_back(ptrData);
+	
+	if (fp)
+		typeNode->typeFunctionPointerPointers.push_back(ptrData);
+	else
+		typeNode->typePointers.push_back(ptrData);
 	return true;
 }
 
-bool ASTParser::ParseNTypePointersAndReferences(ASTPosition &position, ASTType* typeNode)
+bool ASTParser::ParseNTypePointersAndReferences(ASTPosition &position, ASTType* typeNode, bool fp)
 {
 	bool res = false;
-	while (ParseNTypeSinglePointersAndReferences(position, typeNode))
+	while (ParseNTypeSinglePointersAndReferences(position, typeNode, fp))
 	{
 		res |= true;
 	}
@@ -949,171 +1194,131 @@ bool ASTParser::ParseNTypeArrayDefinitions(ASTPosition &position, ASTType* typeN
 	return hasArray;
 }
 
-bool ASTParser::ParseFunctionRemainder(ASTNode* varNode, ASTPosition &cposition, int privatePublicProtected)
+bool ASTParser::ParseNTypeFunctionPointer(ASTPosition &cposition, ASTType* typeNode)
 {
-	bool success = false;
 	ASTPosition position = cposition;
-	// we should start at LParen
 	if (position.GetToken().TokenType != Token::Type::LParen)
 		return false;
-	
-	position.Increment(); // advance past LParen
 
-	// parse function arguments
+	position.Increment();
+
+
+	if (position.GetToken().TokenType == Token::Type::LParen)
+		ParseNTypeFunctionPointer(position, typeNode);	// if we encounter another lparen, recurse
+	else if (position.GetToken().TokenType == Token::Type::Ampersand || position.GetToken() == Token::Type::Asterisk)
+	{
+		// parse pointer tokens
+		while (ParseNTypePointersAndReferences(position, typeNode, true))
+		{
+		}
+	}
+
+	// parse identifier if present
+	ParseNTypeIdentifier(position, typeNode);
+
+	// parse array tokens if present
+	ParseNTypeArrayDefinitions(position, typeNode);
+
 	if (position.GetToken().TokenType != Token::Type::RParen)
-	{
-		// we are not. try parsing subvariables
-		if (ParseFunctionArguments(varNode, privatePublicProtected, position) == false)
-			return false;
-	}
-	else
-	{
-		// advance past rparen
-		position.Increment();
-	}
+		return false;
+	position.Increment();
 
 	cposition = position;
 	return true;
 }
 
-bool ASTParser::ParseFunctionFinalizer(ASTNode* varNode, ASTPosition& position, int privatePublicProtected)
+bool ASTParser::ParseNTypeIdentifier(ASTPosition &cposition, ASTType* typeNode)
 {
-	// parse remainder
-	bool pureVirtual = false;
-	bool isConst = false;
-	if (position.GetToken().TokenType == Token::Type::Const)
+	
+
+	ASTPosition position = cposition;
+	std::vector<ASTTokenIndex> tokenIdent;
+
+
+
+	// parse namespaces
+	while (true)
 	{
-		isConst = true;
-		position.Increment();
+		if (position.GetToken().TokenType == Token::Type::Doublecolon)
+		{
+			tokenIdent.push_back(position.GetTokenIndex());
+			position.Increment();
+		}
+
+		
+		// support destructors & operators
+		if (position.GetToken().TokenType == Token::Type::Operator)
+		{
+			tokenIdent.push_back(position.GetTokenIndex());
+			position.Increment();
+			std::vector<ASTTokenIndex> operatorTokens;
+			if (ParseOperatorType(nullptr, position, operatorTokens) == false)
+				return false;
+
+			typeNode->typeOperatorTokens = operatorTokens;
+			typeNode->typeIdentifier.insert(typeNode->typeIdentifier.end(), tokenIdent.begin(), tokenIdent.end());
+			cposition = position;
+			return true;
+		}
+		else if (position.GetToken().TokenType == Token::Type::Tilde)
+		{
+			tokenIdent.push_back(position.GetTokenIndex());
+			position.Increment();
+		}
+
+		if (position.GetToken().TokenType == Token::Type::Keyword)
+		{
+			tokenIdent.push_back(position.GetTokenIndex());
+			position.Increment();
+		}
+		else
+			break;
 	}
 
-	if (position.GetToken().TokenType == Token::Type::Equals)
-	{
-		// pure virtual
-		position.Increment();
-
-		if (position.GetToken().TokenType != Token::Type::Number || position.GetToken().TokenData != "0")
-			return false;
-		position.Increment();
-
-		if (position.GetToken().TokenType != Token::Type::Semicolon && position.GetToken().TokenType != Token::Type::Comma)
-			return false;
-		position.Increment();
-
-		pureVirtual = true;
-	}
-
-	// store const/virtual
-	if (isConst || pureVirtual)
-	{
-		ASTNode* subSubNode = new ASTNode();
-		subSubNode->type = "FUNCTION_PROPERTIES";
-		if (isConst)
-			subSubNode->data.push_back("const");
-		if (pureVirtual)
-			subSubNode->data.push_back("pure");
-		varNode->children.push_back(subSubNode);
-	}
-
-	if (position.GetToken().TokenType == Token::Type::Semicolon)
-	{
-		// function definition
-		position.Increment();
-	}
-	else if (position.GetToken().TokenType == Token::Type::LBrace)
-	{
-		// function declaration
-		std::vector<ASTTokenIndex> scopeTokens;
-		if (ParseSpecificScopeInner(position, scopeTokens, Token::Type::LBrace, Token::Type::RBrace, &ASTParser::ASTPosition::FilterComments) == false)
-			return false;
-
-		position.Increment(); // skip rbrace
-
-		ASTNode* subSubNode = new ASTNode();
-		subSubNode->type = "DEFINITION";
-		subSubNode->data.push_back(CombineTokens(this, scopeTokens, ""));
-		varNode->children.push_back(subSubNode);
-	}
-	else if (position.GetToken().TokenType == Token::Type::Comma)
-	{
-
-	}
-	else
+	if (tokenIdent.size() == 0)
 		return false;
 
+	// finalize
+	cposition = position;
+	typeNode->typeIdentifier.insert(typeNode->typeIdentifier.end(), tokenIdent.begin(), tokenIdent.end());
+	return true;
+}
 
+bool ASTParser::ParseDeclarationSubArguments(ASTPosition &position, ASTNode* parent)
+{
+	while (true)
+	{
+		std::unique_ptr<ASTType> subType(new ASTType(this));
+		if (ParseDeclarationHead(parent, position, subType.get()) == false)
+			return false;
+
+		ParseDeclarationSub(parent, position, subType.get());
+		subType->type = "DCL_HEAD_SUB";
+		parent->AddNode(subType.release());
+
+		if (position.GetToken().TokenType == Token::Type::Comma)
+		{
+			position.Increment();
+			continue;
+		}
+		else break;
+	}
 
 	return true;
 }
 
-bool ASTParser::ParseClassConstructorDestructor(ASTNode* parent, ASTPosition &cposition, int privatePublicProtected)
+bool ASTParser::ParseDeclarationSubArgumentsScoped(ASTPosition &cposition, ASTNode* parent, Token::Type leftScope, Token::Type rightScope)
 {
 	ASTPosition position = cposition;
-	std::vector<ASTTokenIndex> modifierTokens;
-	
-	// parse pre-keyword modifier tokens
-	while (ParseModifierToken(position, modifierTokens)) {}
-
-	// is this a destructor?
-	bool destructor = false;
-	if (position.GetToken().TokenType == Token::Type::Tilde)
-	{
-		destructor = true;
-		position.Increment();
-	}
-
-	if (position.GetToken().TokenType != Token::Type::Keyword)
+	if (position.GetToken().TokenType != leftScope)
 		return false;
-
-	if (parent->type != "CLASS")
-		return false;
-
-	if (position.GetToken().TokenData != parent->data[0])
-		return false;
-
 	position.Increment();
 
-	// parse post-keyword modifier tokens
-	while (ParseModifierToken(position, modifierTokens)) {}
+	ParseDeclarationSubArguments(position, parent);
 
-	std::unique_ptr<ASTNode> varNode(new ASTNode());
-	if (ParseFunctionRemainder(varNode.get(), position, privatePublicProtected) == false)
+	if (position.GetToken().TokenType != rightScope)
 		return false;
-
-	// parse constructor initialization if applicable
-	if (position.GetToken().TokenType == Token::Type::Colon)
-	{
-		if (destructor)
-			throw new std::runtime_error("destructor with initializer list is prohibited");
-		position.Increment();
-		while (ParseConstructorInitializer(varNode.get(), position)) { if(position.GetToken().TokenType == Token::Type::Comma) position.Increment(); }
-	}
-
-	// parse final function stage
-	if (ParseFunctionFinalizer(varNode.get(), position, privatePublicProtected) == false)
-		return false;
-
-	// everything checked out
-
-	// generate type
-	std::unique_ptr<ASTType> varType(new ASTType(this));
-	varType->typeModifiers.swap(modifierTokens);
-	varNode->children.insert(varNode->children.begin(), varType.release());
-
-	if (destructor == false)
-		varNode->type = "CONSTRUCTOR";
-	else
-		varNode->type = "DESTRUCTOR";
-
-	// add visibility
-	if (privatePublicProtected == 0)
-		varNode->data.push_back("private");
-	else if (privatePublicProtected == 1)
-		varNode->data.push_back("public");
-	else if (privatePublicProtected == 2)
-		varNode->data.push_back("protected");
-
-	parent->children.push_back(varNode.release());
+	position.Increment();
 
 	cposition = position;
 	return true;
@@ -1121,9 +1326,8 @@ bool ASTParser::ParseClassConstructorDestructor(ASTNode* parent, ASTPosition &cp
 
 const std::string& ASTType::GetType() const
 {
-	static std::string t = "TYPE"; return t;
+	return type;
 }
-
 
 std::string ASTPointerType::ToString()
 {
@@ -1136,7 +1340,6 @@ std::string ASTPointerType::ToString()
 		ret += " " + it.TokenData;
 	return ret;
 }
-
 
 std::string ASTType::ToString()
 {
@@ -1156,18 +1359,36 @@ std::string ASTType::ToString()
 			ret += tokenSource->Tokens[it2].TokenData;
 		ret += "]";
 	}
+
+	if (typeArrayTokens.size() > 0) ret += " ";
+	
+	for (auto& it : typeIdentifier)
+		ret += tokenSource->Tokens[it].TokenData;
+
+	if (typeIdentifier.size() > 0) ret += " ";
+
+	for (auto& it : typeOperatorTokens)
+		ret += tokenSource->Tokens[it].TokenData;
+
+	if (typeOperatorTokens.size() > 0) ret += " ";
+		
+
+		
+	// remove trailing space
+	if (ret.size() > 0 && ret.back() == ' ')
+		ret.pop_back();
 		
 
 	return ret;
 
 }
+
 const std::vector<std::string>& ASTType::GetData()
 {
 	data.clear();
 	data.push_back(ToString());
 	return data;
 }
-
 
 #pragma region ASTPosition
 void ASTParser::ASTPosition::Increment(int count/*=1*/, bool(*filterAllows)(Token& token)/*=0*/)

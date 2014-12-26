@@ -31,11 +31,15 @@ struct Token
 		Ampersand, // &
 		Tilde, //~
 		Asterisk, // *
+		Slash, // /
+		Pipe, // |
+		Percent, // %
 		Plus, // +
 		Minus, // -
 		Keyword, // [a-zA-Z][a-zA-Z0-9_-]*
 		Number, // [0-9][.0-9]*[f]?
 		Class, // class
+		Struct, // struct
 		Enum, // enum
 		Public, // public
 		Private, // private
@@ -53,6 +57,9 @@ struct Token
 		Template, // template
 		Typename, // typename
 		Typedef, // typedef
+		Namespace, // namespace
+		Using, // using
+		ForceInline, // __forceinline
 		String,
 		CharConstant,
 		Const, // const

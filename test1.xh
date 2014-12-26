@@ -1,11 +1,255 @@
+std::map<int, std::vector<float>> myMap;
+
+using namespace TestNamespace;
+using namespace Test::Nested::Namespace;
+using namespace ::Test::Prefixed::Namespace;
+using std::string;
+
+class TestForwardDeclarationClass;
+struct TestForwardDeclarationStruct;
+
+namespace TestNamespace
+{
+	template <class T>
+	class TestClass
+	{
+		int size();	
+
+	};
+
+	int TestFunc();
+};
+
+// TestAnonymousNamespace
+namespace
+{
+	int FuncInAnonymousNamespace();
+}
+
+template <class T, typename T2, int v=10>
+class TestTemplate
+{
+	T test;
+	T2 test2;
+	template<class T3> void Foo();
+};
+
+
+// TestAnonymousClass
+class
+{
+	int TestAnonymousClass();
+};
+
+// TestAnonymousStruct
+struct
+{
+	int TestAnonymousStruct();
+};
+
+
+
+class TestConstructors
+{
+public:
+	TestConstructors::TestConstructors(float f);
+	TestConstructors::TestConstructors(float a, std::string b);
+	TestConstructors::~TestConstructors();
+
+	TestConstructors() : foo(10) {}
+	TestConstructors() : foo(10), bar(20) {}
+
+	virtual TestConstructors();
+	TestConstructors();
+
+	virtual ~TestConstructors();
+	TestConstructors(int,std::vector<int> );
+	~TestConstructors();
+
+};
+class TestFunctionPointer
+{
+	void (*fpointer)();
+	void Increment(int count=1, bool (*filterAllows)(Token& token)=&FilterWhitespaceComments);
+};
+
+class TestSimpleFunctionsDirectInlineFunctions
+{
+public:
+	void A() { }
+	int B() { return 10; }
+	float C() { return 15.0f; }
+	double D() { return 100.0; }
+	string E() { { int subscope; } /* bla */ return "hello there friend"; }
+
+	TestSimpleCrossReference F() { return TestSimpleCrossReference(); }
+};
+
+
+
+class TestSimpleVariablesModes
+{
+public:
+	int a;
+	float b;
+	double c;
+	short d;
+	char e;
+	unsigned short extern volatile f;
+	mutable unsigned int g;
+	unsigned char h;
+	randomType j;
+private:
+    int priv_a;
+protected:
+    int prot_a;
+};
+
+class TestSimpleVariablesPublicWithInitialization
+{
+public:
+	int a=10;
+	float b=11.0f;
+	double c=12.0;
+	short d=13;
+	char e='a';
+	unsigned short f=(500,20);
+	unsigned int g=10000;
+	unsigned char h='a';
+};
+
+class TestSimplePointers
+{
+public:
+	int* a;
+	float* b;
+	double* c;
+	int** aa;
+	float** bb;
+	double** cc;	
+};
+
+
+class TestHardPointers
+{
+	const mutable static float *a;
+	const mutable static float * const b;
+	const mutable static float * const * volatile c;
+	const mutable static float * const * volatile d1, * const d2, * volatile * const d3;
+};
+
+class TestSimpleVariablesMultiline
+{
+public:
+	int x,y,z;
+	float x2,y2,z2;
+	double x3=10.0,y3=20.0,z3=30.0;
+	double x4=(10.0,20.0),y4=(20.0,30.0),z4=(30.0,40.0);
+};
+
+class TestSimpleArrayVariables
+{
+public:
+	int a[10];
+	float b[20];
+	double c[30];
+	short d[40];
+	char e[50];
+	unsigned short f[60];
+	unsigned int g[70];
+	unsigned char h[80];
+};
+
+
+class TestSimpleMultidimArrayVariables
+{
+public:
+	int a[10][11];
+	float b[20][22];
+	double c[30][33];
+	short d[40][44];
+	char e[50][55];
+	unsigned short f[60][66];
+	unsigned int g[70][77];
+	unsigned char h[80][88];
+};
+
+class TestSimpleNamespaces
+{
+public:
+	std::string a;
+	std::something_else23 b;
+	std::string c="test";
+};
+
+class TestNestedClass
+{
+public:
+	class SubClass
+	{
+	public:
+		int a;
+	};
+
+	SubClass a;
+};
+
+class TestInheritance: public TestSimpleFunctionsDirect, private TestSimpleFunctionsDirectWithArguments, protected TestSimpleFunctionsDirectInlineFunctions
+{
+
+};
+
+
+class TestSimpleCrossReference
+{
+public:
+	TestSimpleVariablesPublic a, b=TestSimpleVariablesPublic(10,20), c;
+};
+
+class TestSimpleFunctionsDirectWithArguments
+{
+public:
+	void A0(), A1(int a);
+	int B(int a, float b);
+	float C(int a, float b, char c);
+	double D(int a, float b, char c, std::string d);
+	string E(int a, float b, char c, std::string d, unsigned int e);
+	TestSimpleCrossReference F(int a, float b, char c, std::string d, unsigned int e, unsigned char f);
+};
+
+class TestFunctionPointers
+{
+public:
+	void (*localFP)(int a, float);
+	void A(void (*)(int a, float));
+	void B(bool (*test)(int a, float));
+
+	void (*localFP)(int a, float), *test;
+	float A(), B(), c;
+	std::float A(), B(), c;
+	std::vector<int> A(), B(), c;
+};
+
+class TestSimpleFunctionsDirect
+{
+public:
+	void A();
+	int B();
+	float C();
+	double D();
+	string E();
+	TestSimpleCrossReference F();
+};
 
 class TestClassOperators
 {
+	virtual operator float();
+	virtual TestClassOperator::operator int();
 	operator double();
 	TestClassOperator::operator int();
+	
 	R& TestClassOperator::operator =(S b);
 
-	
 	R TestClassOperator::operator +(S b);
 	R TestClassOperator::operator -(S b);
 	R TestClassOperator::operator +();
@@ -60,70 +304,6 @@ class TestClassOperators
 };
 
 
-class TestSimpleFunctionsDirectWithArguments
-{
-public:
-	void A0(), A1(int a);
-	int B(int a, float b);
-	float C(int a, float b, char c);
-	double D(int a, float b, char c, std::string d);
-	string E(int a, float b, char c, std::string d, unsigned int e);
-	TestSimpleCrossReference F(int a, float b, char c, std::string d, unsigned int e, unsigned char f);
-};
-
-class TestSimpleFunctionsDirectInlineFunctions
-{
-public:
-	TestSimpleFunctionsDirectInlineFunctions(int) : a(10), b(20), c((30)) {}
-	TestSimpleFunctionsDirectInlineFunctions() {}
-	~TestSimpleFunctionsDirectInlineFunctions() {}
-	TestSimpleFunctionsDirectInlineFunctions(int) {}
-	~TestSimpleFunctionsDirectInlineFunctions(int) {}
-	virtual TestSimpleFunctionsDirectInlineFunctions(int) {}
-	virtual ~TestSimpleFunctionsDirectInlineFunctions(int) {}
-
-
-	void A() { }
-	int B() { return 10; }
-	float C() { return 15.0f; }
-	double D() { return 100.0; }
-	string E() { { int subscope; } /* bla */ return "hello there friend"; }
-
-	TestSimpleCrossReference F() { return TestSimpleCrossReference(); }
-};
-
-
-class TestSimpleFunctionsDirect
-{
-public:
-	void A();
-	int B();
-	float C();
-	double D();
-	string E();
-	TestSimpleCrossReference F();
-};
-
-
-
-
-class TestInheritance: public TestSimpleFunctionsDirect, private TestSimpleFunctionsDirectWithArguments, protected TestSimpleFunctionsDirectInlineFunctions
-{
-
-};
-
-class TestSimpleStdString
-{
-public:
-	std::string a;
-	std::something_else23 b;
-};
-
-class TestSimpleStdStringWithInitialization
-{
-public:
-	std::string a="test";
-};
 
 enum MyEnum
 {
@@ -148,172 +328,4 @@ public:
 		Test,
 		Something=100
 	};
-};
-
-class TestSimpleVariablesPublic
-{
-public:
-	int a;
-	float b;
-	double c;
-	short d;
-	char e;
-	unsigned short extern volatile f;
-	mutable unsigned int g;
-	unsigned char h;
-	randomType j;
-};
-
-class TestSimpleVariablesPrivate
-{
-private:
-	int a;
-	float b;
-	double c;
-	short d;
-	char e;
-	Blaat e;
-	unsigned short ;
-	unsigned int g;
-	unsigned char h;
-};
-
-class TestSimpleVariablesProtected
-{
-protected:
-	int a;
-	float b;
-	double c;
-	short d;
-	char e;
-	unsigned short f;
-	unsigned int g;
-	unsigned char h;
-};
-
-class TestSimpleVariablesMixed
-{
-public:
-	int a;
-	float b;
-	double c;
-protected:
-	short d;
-	char e;
-	extern unsigned short volatile f;
-	unsigned int g;
-private:
-	unsigned char h;
-	randomType j;
-};
-
-class TestSimpleVariablesPublicWithInitialization
-{
-public:
-	int a=10;
-	float b=11.0f;
-	double c=12.0;
-	short d=13;
-	char e='a';
-	unsigned short f=(500,20);
-	unsigned int g=10000;
-	unsigned char h='a';
-};
-
-
-class TestSimpleVariablesPublicUninitialized
-{
-public:
-	int a=undefined;
-	float b =undefined;
-	double c = undefined;
-	short d =undefined ;
-	char e=undefined;
-	unsigned short f=undefined;
-	unsigned int g=undefined;
-	unsigned char h=undefined;
-};
-
-
-
-
-class TestSimpleVariablesMultiline
-{
-public:
-	int x,y,z;
-	float x2,y2,z2;
-	double x3=10.0,y3=20.0,z3=30.0;
-	double x4=(10.0,20.0),y4=(20.0,30.0),z4=(30.0,40.0);
-};
-
-class TestSimplePointers
-{
-public:
-	int* a;
-	float* b;
-	double* c;
-	int** aa;
-	float** bb;
-	double** cc;	
-};
-
-class TestHardPointers
-{
-	const mutable static float *a;
-	const mutable static float * const b;
-	const mutable static float * const * volatile c;
-	const mutable static float * const * volatile d1, * const d2, * volatile * const d3;
-};
-
-class TestSimpleArrayVariables
-{
-public:
-	int a[10];
-	float b[20];
-	double c[30];
-	short d[40];
-	char e[50];
-	unsigned short f[60];
-	unsigned int g[70];
-	unsigned char h[80];
-};
-
-class TestSimpleMultidimArrayVariables
-{
-public:
-	int a[10][11];
-	float b[20][22];
-	double c[30][33];
-	short d[40][44];
-	char e[50][55];
-	unsigned short f[60][66];
-	unsigned int g[70][77];
-	unsigned char h[80][88];
-};
-
-class TestNestedClass
-{
-public:
-	class SubClass
-	{
-	public:
-		int a;
-	};
-
-	SubClass a;
-};
-
-class TestSimplePointersWithInitialization
-{
-public:
-	int* a = allocate(10);
-	float* b = allocate(10);
-	double* c = allocate(10);
-};
-
-
-class TestSimpleCrossReference
-{
-public:
-	TestSimpleVariablesPublic a, b=TestSimpleVariablesPublic(10,20), c;
 };

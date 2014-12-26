@@ -27,15 +27,21 @@
     <ClCompile Include="astGenerator.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="astProcessor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="test1.xh">
-      <Filter>Data</Filter>
-    </None>
     <None Include="test2.xh">
       <Filter>Data</Filter>
     </None>
     <None Include="testSelf.xh">
+      <Filter>Data</Filter>
+    </None>
+    <None Include="test3.xh">
+      <Filter>Data</Filter>
+    </None>
+    <None Include="test1.xh">
       <Filter>Data</Filter>
     </None>
   </ItemGroup>
@@ -44,6 +50,12 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="astGenerator.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ast.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="astProcessor.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
