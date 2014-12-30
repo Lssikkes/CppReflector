@@ -1141,7 +1141,7 @@ bool ASTParser::ParseNTypeSinglePointersAndReferences(ASTPosition &cposition, AS
 	while (position.GetToken() == Token::Type::Const || position.GetToken() == Token::Type::Volatile)
 	{
 		if (ptrToken == Token::Type::Ampersand)
-			throw std::exception("modifiers (const/volatile) are not allowed on a reference");
+			throw std::runtime_error("modifiers (const/volatile) are not allowed on a reference");
 
 		if (position.GetToken() == Token::Type::Const) // const applies to the thing to the left (so it could apply to the pointer)
 			ptrData.pointerModifiers.push_back(position.GetToken());

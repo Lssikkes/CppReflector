@@ -1,4 +1,5 @@
 #include "tokenizer.h"
+#include <stdexcept>
 
 Token Tokenizer::PeekNextToken(int& offset)
 {
@@ -84,7 +85,8 @@ Token Tokenizer::PeekNextToken(int& offset)
 				if(next.size() == 0)
 					throw std::runtime_error("end of file reached while parsing multi line comment");
 				
-				offset = AddPart(token, next.substr(0, 1), offset);
+				std::string fragment = next.substr(0, 1); 
+				offset = AddPart(token, fragment, offset);
 
 				// continue
 				next = PeekBytes(2, offset);
@@ -281,6 +283,8 @@ void Tokenizer::ConvertToSpecializedKeyword( Token& token )
 		token.TokenType = Token::Type::ForceInline;
 	else if (token.TokenData == "struct")
 		token.TokenType = Token::Type::Struct;
+	else if (token.TokenData == "friend")
+		token.TokenType = Token::Type::Friend;
 }
 
 
@@ -325,7 +329,7 @@ Token Tokenizer::GetNextToken()
 	return token;
 }
 
-int Tokenizer::AddPart( Token &token, std::string &next, int& offset )
+int Tokenizer::AddPart( Token &token, const std::string &next, int& offset )
 {
 	token.TokenData += next;
 	offset += next.size();	

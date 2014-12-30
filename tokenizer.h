@@ -29,7 +29,7 @@ struct Token
 		Hash, // #
 		Equals, // =
 		Ampersand, // &
-		Tilde, //~
+		Tilde, // ~
 		Asterisk, // *
 		Slash, // /
 		Pipe, // |
@@ -60,6 +60,7 @@ struct Token
 		Namespace, // namespace
 		Using, // using
 		ForceInline, // __forceinline
+		Friend, // friend
 		String,
 		CharConstant,
 		Const, // const
@@ -93,7 +94,7 @@ protected:
 
 	Token PeekNextToken(int& offset);
 
-	int AddPart( Token &token, std::string &next, int& offset );
+	int AddPart( Token &token, const std::string &next, int& offset );
 
 	int IsCombinableWith(Token& tok, Token& nextToken);
 	void ConvertToSpecializedKeyword(Token& tokKeyword);

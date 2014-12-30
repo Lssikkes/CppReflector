@@ -13,11 +13,14 @@ namespace TestNamespace
 	template <class T>
 	class TestClass
 	{
-		int size();	
+		int size();
 
+		T hoi;
 	};
 
+
 	int TestFunc();
+
 };
 
 // TestAnonymousNamespace
@@ -34,7 +37,6 @@ class TestTemplate
 	template<class T3> void Foo();
 };
 
-
 // TestAnonymousClass
 class
 {
@@ -47,8 +49,6 @@ struct
 	int TestAnonymousStruct();
 };
 
-
-
 class TestConstructors
 {
 public:
@@ -57,7 +57,8 @@ public:
 	TestConstructors::~TestConstructors();
 
 	TestConstructors() : foo(10) {}
-	TestConstructors() : foo(10), bar(20) {}
+	TestConstructors() : foo(10), bar(20) {	}
+	
 
 	virtual TestConstructors();
 	TestConstructors();
@@ -65,6 +66,8 @@ public:
 	virtual ~TestConstructors();
 	TestConstructors(int,std::vector<int> );
 	~TestConstructors();
+protected:
+	int myProtectedVariable;
 
 };
 class TestFunctionPointer
@@ -100,9 +103,9 @@ public:
 	unsigned char h;
 	randomType j;
 private:
-    int priv_a;
+	int priv_a;
 protected:
-    int prot_a;
+	int prot_a;
 };
 
 class TestSimpleVariablesPublicWithInitialization
@@ -270,7 +273,7 @@ class TestClassOperators
 	R TestClassOperator::operator !();
 	R TestClassOperator::operator &&(S b);
 	R TestClassOperator::operator ||(S b);
-    R TestClassOperator::operator ~();
+	R TestClassOperator::operator ~();
 	R TestClassOperator::operator &(S b);
 	R TestClassOperator::operator |(S b);
 	R TestClassOperator::operator ^(S b);

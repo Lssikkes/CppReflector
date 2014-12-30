@@ -28,6 +28,9 @@ public:
 	virtual const std::string& GetType() const { return type; }
 	virtual const std::vector<std::string>& GetData() { return data; }
 	ASTNode* GetParent() const { return parent; }
+	
+	void SetType(const std::string& a_type) { type = a_type; }
+	void AddData(const std::string& a_dataValue) { data.push_back(a_dataValue); }
 protected:
 	friend class ASTParser;
 	std::string type;

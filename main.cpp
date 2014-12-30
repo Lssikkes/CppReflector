@@ -1,62 +1,58 @@
-#include <vld.h>
-#include <iostream>
 #include "tokenizer.h"
-#include <fstream>
+#include "astProcessor.h"
 #include "astGenerator.h"
-#include <ppl.h>
+#include "tools.h"
 #include <omp.h>
+#include <iostream>
+#include <mutex>
+
+#ifdef VLD_MEM_DEBUGGER
+#include <vld.h>
+#endif
+#ifdef WIN32
+#include <windows.h>
+#endif
 
 // TODO: friend keyword
 // TODO: friend class keyword
 
-const int v=10;
-std::string readFromFile(std::string filename)
-{
-	std::ifstream ifs(filename);
-	std::string content( (std::istreambuf_iterator<char>(ifs) ), ( std::istreambuf_iterator<char>() ) );
-	return content;
-}
 
-void Print(ASTNode* node, int level=0)
-{
-	std::string allData;
-	for(auto it : node->GetData())
-		allData += it + "|" ;
-	if(allData.size() > 0)
-		allData.pop_back();
-
-	char padding[32];
-	memset(padding, ' ', 32);
-	padding[level*2] = 0;
-
-	printf("%s * %s (%s)\n", padding, node->GetType().c_str(), allData.c_str());
-
-	for(auto it: node->Children())
-		Print(it, level+1);
-}
-
-
-
-#include <windows.h>
 int main(int argc, char** argv)
 {	
-	int v;
-	StringTokenizer stokenizer(readFromFile("test1.xh"));
-	ASTParser parser(stokenizer);
-	parser.Verbose = true;
+	cmdOptions opts;
+	cmdOptions::parse(opts, argc, argv);
+	
+	std::mutex lkSuperRoot;
+	std::vector<std::unique_ptr<ASTParser>> parsers;
 
-	//#pragma omp parallel for
-	for (int i = 0; i<10000; i++)
+	ASTNode superRoot;
+	superRoot.SetType("ROOT");
+	
+	#pragma omp parallel for
+	for(int i=0; i<opts.names.size(); i++)
 	{
-		ASTNode root;
+		StringTokenizer stokenizer(readFromFile(opts.names[i]));
+		std::unique_ptr<ASTParser> parser(new ASTParser(stokenizer));
+		
+		// enable verbosity
+		if(opts.options.find("verbose") != opts.options.end())
+			parser->Verbose = true;
+		
+		std::unique_ptr<ASTNode> root(new ASTNode);
+		root->SetType("FILE");
+		root->AddData(opts.names[i]);
 
-		ASTParser::ASTPosition position(parser);
+		ASTParser::ASTPosition position(*parser.get());
 		try
 		{
-			if (parser.Parse(&root, position))
+			if (parser->Parse(root.get(), position))
 			{
-				if (i == 0)
-					Print(&root);
+				// store parser - we need the tokens later
+				parsers.push_back(std::move(parser));
+				
+				lkSuperRoot.lock();
+				superRoot.AddNode(root.release());
+				lkSuperRoot.unlock();
 			}
 			else
 				printf("Error during parse.\n");
@@ -69,4 +65,5 @@ int main(int argc, char** argv)
 	}
 
 	printf("Parse successful.\n");
+	ASTProcessor::Print(&superRoot);
 }
