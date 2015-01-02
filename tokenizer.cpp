@@ -234,7 +234,19 @@ Token Tokenizer::PeekNextToken(int& offset)
 		if(next == "\n")
 			offset = AddPart(token, next, offset);
 	}
-
+	else if (token.TokenData.at(0) == static_cast<char>(0xEF))
+	{
+		// 0xEF, 0xBB, 0xBF
+		char bomContinuation[] = { 0xBB, 0xBF, 0 };
+		std::string next = PeekBytes(2, offset);
+		if (next == bomContinuation)
+		{
+			token.TokenType = Token::Type::BOM_UTF8;
+			AddPart(token, next, offset);
+		}
+		else
+			token.TokenType = Token::Type::Unknown;
+	}
 	else
 		token.TokenType = Token::Type::Unknown;
 	return token;
@@ -325,7 +337,6 @@ void Tokenizer::ConvertToSpecializedKeyword( Token& token )
 
 }
 
-
 int Tokenizer::IsCombinableWith( Token& token, Token& nextToken )
 {
     if(token.TokenType == Token::Type::Unknown)
@@ -336,7 +347,6 @@ int Tokenizer::IsCombinableWith( Token& token, Token& nextToken )
 	}
 	return 0;
 }
-
 
 Token Tokenizer::GetNextToken()
 {

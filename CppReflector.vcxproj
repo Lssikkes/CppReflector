@@ -96,6 +96,7 @@
     <ClInclude Include="ast.h" />
     <ClInclude Include="astGenerator.h" />
     <ClInclude Include="astProcessor.h" />
+    <ClInclude Include="modules.h" />
     <ClInclude Include="tokenizer.h" />
     <ClInclude Include="tools.h" />
   </ItemGroup>
@@ -103,10 +104,14 @@
     <ClCompile Include="astGenerator.cpp" />
     <ClCompile Include="astProcessor.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="moduleCppParser.cpp" />
+    <ClCompile Include="modulePrintAST.cpp" />
+    <ClCompile Include="modules.cpp" />
     <ClCompile Include="tokenizer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="pthread.xh" />
+    <None Include="rigidbody.xh" />
     <None Include="stdio.xh" />
     <None Include="test1.xh" />
     <None Include="test2.xh" />

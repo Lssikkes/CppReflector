@@ -9,12 +9,12 @@
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
+    <Filter Include="Data">
+      <UniqueIdentifier>{4020d996-2248-4fc7-894a-12261331462a}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Resource Files">
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
-    </Filter>
-    <Filter Include="Data">
-      <UniqueIdentifier>{4020d996-2248-4fc7-894a-12261331462a}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -28,6 +28,15 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="astProcessor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="modulePrintAST.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="modules.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="moduleCppParser.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -44,8 +53,11 @@
     <ClInclude Include="astProcessor.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="modules.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
     <ClInclude Include="tools.h">
-      <Filter>Header Files</Filter>
+      <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -65,6 +77,9 @@
       <Filter>Data</Filter>
     </None>
     <None Include="testSelf.xh">
+      <Filter>Data</Filter>
+    </None>
+    <None Include="rigidbody.xh">
       <Filter>Data</Filter>
     </None>
   </ItemGroup>

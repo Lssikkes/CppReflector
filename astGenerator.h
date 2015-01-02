@@ -31,15 +31,20 @@ public:
 		ASTTokenIndex Position;
 		operator unsigned int() { return Position; }
 	};
+
 	ASTParser() {}
 	ASTParser(Tokenizer& fromTokenizer);
 	
 	bool Verbose = false;
+	bool IsUTF8 = false;
 
 	bool Parse(ASTNode* parent, ASTPosition& position);
+
+
 protected:
 	bool ParseRoot(ASTNode* parent, ASTPosition& position);
-	
+	void ParseBOM(ASTPosition &position);
+
 	bool ParseTemplate( ASTNode* parent, ASTPosition& position);
 	bool ParseNamespace(ASTNode* parent, ASTPosition& position);
 	bool ParseUsing(ASTNode* parent, ASTPosition& cposition);

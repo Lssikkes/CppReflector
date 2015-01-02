@@ -102,6 +102,9 @@ ASTParser::ASTParser( Tokenizer& fromTokenizer )
 
 bool ASTParser::Parse( ASTNode* parent, ASTPosition& position)
 {
+	ParseBOM(position);
+
+
 	while(true) 
 	{ 
 		if (ParseEndOfStream(parent, position))
@@ -291,7 +294,7 @@ bool ASTParser::ParseClass(ASTNode* parent, ASTPosition& cposition)
 			std::vector<ASTTokenIndex> tokens;
 			ParseSpecificScopeInner(position, tokens, Token::Type::LBrace, Token::Type::RBrace, ASTPosition::FilterNone);
 			if (Verbose)
-				printf("* discarding unknown scope in class/struct: %s", CombineTokens(this, tokens, ""));
+				fprintf(stderr, "[PARSER] discarding unknown scope in class/struct: %s", CombineTokens(this, tokens, ""));
 		}
 		else
 		{
@@ -607,14 +610,15 @@ bool ASTParser::ParseTypedef(ASTNode* parent, ASTPosition& cposition)
 
 bool ASTParser::ParsePreprocessor(ASTNode* parent, ASTPosition& position)
 {
+	// this is officially not a part of C/C++, however we parse it anyway
 
 	if (position.GetToken().TokenType == Token::Type::Hash)
 	{
 		std::vector<ASTTokenIndex> preprocessorTokens;
 
+		// parse until newline or end of stream and store tokens
 		while (true)
 		{
-
 			if (position.GetToken().TokenType == Token::Type::Newline || position.GetToken().TokenType == Token::Type::EndOfStream)
 				break;
 
@@ -622,8 +626,9 @@ bool ASTParser::ParsePreprocessor(ASTNode* parent, ASTPosition& position)
 			position.Increment(1, ASTPosition::FilterNone);
 		}
 
+		// print a message
 		if (Verbose)
-			printf(" * ignoring preprocessor directive: \"%s\"\n", CombineTokens(this, preprocessorTokens, "").c_str());
+			fprintf(stderr, "[PARSER] ignoring preprocessor directive: \"%s\"\n", CombineTokens(this, preprocessorTokens, "").c_str());
 
 		// make sure we are at a non whitespace/comment at the end
 		if (ASTPosition::FilterWhitespaceComments(position.GetToken()) == false)
@@ -728,7 +733,7 @@ bool ASTParser::ParseIgnored( ASTNode* parent, ASTPosition& position )
 bool ASTParser::ParseUnknown( ASTNode* parent, ASTPosition& position )
 {
 	if (Verbose)
-		printf("no grammar match for token: %d (type: %d, line: %d): %s\n", position.Position, position.GetToken().TokenType, position.GetToken().TokenLine, position.GetToken().TokenData.c_str());
+		fprintf(stderr, "[PARSER] no grammar match for token: %d (type: %d, line: %d): %s\n", position.Position, position.GetToken().TokenType, position.GetToken().TokenLine, position.GetToken().TokenData.c_str());
 	position.Increment();
 	return false;
 }
@@ -1587,6 +1592,17 @@ bool ASTParser::ParseMSVCDeclspecOrGCCAttribute(ASTPosition &position, std::pair
 
 	outTokenStream = std::make_pair(idxStart, vtokens.back()+1);
 	return true;
+}
+
+void ASTParser::ParseBOM(ASTPosition &position)
+{
+	// check for byte order marks
+	if (position.GetToken().TokenType == Token::Type::BOM_UTF8)
+	{
+		fprintf(stderr, "[PARSER] File contains UTF-8 BOM.\n");
+		IsUTF8 = true;
+		position.Increment();
+	}
 }
 
 
