@@ -68,7 +68,7 @@ public:
 	std::vector<ASTTokenIndex> typeNamespaces;
 	std::vector<ASTTokenIndex> typeName;
 	std::vector<ASTTokenIndex> typeIdentifier;
-	std::vector<ASTTokenIndex> typeModifiers;
+	std::vector<std::pair<ASTTokenIndex, ASTTokenIndex> > typeModifiers;
 	std::vector<ASTTokenIndex> typeOperatorTokens;
 	std::vector<ASTPointerType> typePointers;
 	std::vector<std::vector<ASTTokenIndex>> typeArrayTokens;
@@ -79,4 +79,5 @@ public:
 	virtual const std::vector<std::string>& GetData();
 	std::string ToString();
 	virtual const std::string& GetType() const;
+	void MergeIntoSelf(ASTType* other);
 };

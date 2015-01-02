@@ -43,6 +43,8 @@ protected:
 	bool ParseTemplate( ASTNode* parent, ASTPosition& position);
 	bool ParseNamespace(ASTNode* parent, ASTPosition& position);
 	bool ParseUsing(ASTNode* parent, ASTPosition& cposition);
+	bool ParseFriend(ASTNode* parent, ASTPosition& cposition);
+	bool ParseTypedef(ASTNode* parent, ASTPosition& cposition);
 	bool ParseEnum(ASTNode* parent, ASTPosition& position);
 	bool ParseEnumDefinition(ASTNode* parent, ASTPosition& position);
 	bool ParseClass(ASTNode* parent, ASTPosition& position);
@@ -52,10 +54,12 @@ protected:
 	bool ParseConstructorInitializer(ASTNode* parent, ASTPosition& cposition);
 	bool ParseOperatorType(ASTNode* parent, ASTPosition& cposition, std::vector<ASTTokenIndex>& ctokens);
 	bool ParseDeclaration( ASTNode* parent, ASTPosition& cposition );
+	bool _ParseDeclaration_HeadSubs(ASTPosition &position, ASTNode* parent, std::unique_ptr<ASTType> &headType, int &lastSubID);
+
 	bool ParseDeclarationHead(ASTNode* parent, ASTPosition& cposition, ASTType* type);
 	bool ParseDeclarationSub(ASTNode* parent, ASTPosition& cposition, ASTType* type, bool requireIdentifier=false);
-	bool ParseModifierToken(ASTPosition& position, std::vector<Token>& modifierTokens);
-	bool ParseModifierToken(ASTPosition& position, std::vector<ASTTokenIndex>& modifierTokens);
+	bool ParseModifierToken(ASTPosition& position, std::vector<std::pair<ASTTokenIndex, ASTTokenIndex>>& modifierTokens);
+	bool ParseMSVCDeclspecOrGCCAttribute(ASTPosition &position, std::pair<ASTTokenIndex, ASTTokenIndex>& outTokenStream);
 
 	bool ParseClassConstructorDestructor(ASTNode* parent, ASTPosition &position);
 	bool ParsePointerReferenceSymbol(ASTPosition &position, std::vector<Token> &pointerTokens, std::vector<Token> &pointerModifierTokens );
@@ -74,5 +78,7 @@ protected:
 
 	bool ParseDeclarationSubArguments(ASTPosition &position, ASTNode* parent);
 	bool ParseDeclarationSubArgumentsScoped(ASTPosition &position, ASTNode* parent, Token::Type leftScope, Token::Type rightScope);
-	
+
+
+
 };

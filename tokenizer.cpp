@@ -10,8 +10,19 @@ Token Tokenizer::PeekNextToken(int& offset)
 
 	if(token.TokenData.size() == 0)
 		token.TokenType = Token::Type::EndOfStream;
-	else if(token.TokenData.at(0) == ' ' || token.TokenData.at(0) == '\t')
+	else if (token.TokenData.at(0) == ' ' || token.TokenData.at(0) == '\t')
+	{
 		token.TokenType = Token::Type::Whitespace;
+		std::string next;
+		while (true)
+		{
+			next = PeekBytes(1, offset);
+			if (next == " " || next == "\t")
+				AddPart(token, next, offset);
+			else
+				break;
+		}
+	}	
 	else if(token.TokenData.at(0) == '\n')
 		token.TokenType = Token::Type::Newline;
 	else if(token.TokenData.at(0) == '[')
@@ -52,8 +63,17 @@ Token Tokenizer::PeekNextToken(int& offset)
 		token.TokenType = Token::Type::Hash;
 	else if(token.TokenData.at(0) == '=')
 		token.TokenType = Token::Type::Equals;
-	else if(token.TokenData.at(0) == '.')
-		token.TokenType = Token::Type::Dot;
+	else if (token.TokenData.at(0) == '.')
+	{
+		std::string next = PeekBytes(2, offset);
+		if (next == "..")
+		{
+			token.TokenType = Token::Type::DotDotDot;
+			AddPart(token, next, offset);
+		}
+		else 
+			token.TokenType = Token::Type::Dot;
+	}
 	else if(token.TokenData.at(0) == ',')
 		token.TokenType = Token::Type::Comma;
 	else if(token.TokenData.at(0) == '/')
@@ -220,7 +240,6 @@ Token Tokenizer::PeekNextToken(int& offset)
 	return token;
 }
 
-
 void Tokenizer::ConvertToSpecializedKeyword( Token& token )
 {
 	if(token.TokenData == "public")
@@ -231,10 +250,16 @@ void Tokenizer::ConvertToSpecializedKeyword( Token& token )
 		token.TokenType = Token::Type::Private;
 	else if(token.TokenData == "class")
 		token.TokenType = Token::Type::Class;
+	else if (token.TokenData == "struct")
+		token.TokenType = Token::Type::Struct;
+	else if (token.TokenData == "union")
+		token.TokenType = Token::Type::Union;
 	else if(token.TokenData == "const")
 		token.TokenType = Token::Type::Const;
 	else if(token.TokenData == "unsigned")
 		token.TokenType = Token::Type::Unsigned;
+	else if (token.TokenData == "signed")
+		token.TokenType = Token::Type::Signed;
 	else if(token.TokenData == "null")
 		token.TokenType = Token::Type::Null;
 	else if(token.TokenData == "void")
@@ -279,24 +304,31 @@ void Tokenizer::ConvertToSpecializedKeyword( Token& token )
 		token.TokenType = Token::Type::Namespace;
 	else if (token.TokenData == "using")
 		token.TokenType = Token::Type::Using;
-	else if (token.TokenData == "__forceinline")
-		token.TokenType = Token::Type::ForceInline;
-	else if (token.TokenData == "struct")
-		token.TokenType = Token::Type::Struct;
 	else if (token.TokenData == "friend")
 		token.TokenType = Token::Type::Friend;
+	else if (token.TokenData == "__forceinline")
+		token.TokenType = Token::Type::MSVCForceInline;
+	else if (token.TokenData == "restrict")
+		token.TokenType = Token::Type::Restrict;
+	else if (token.TokenData == "__inline")
+		token.TokenType = Token::Type::Inline;
+	else if (token.TokenData == "__declspec")
+		token.TokenType = Token::Type::MSVCDeclspec;
+	else if (token.TokenData == "__attribute__")
+		token.TokenType = Token::Type::GCCAttribute;
+	else if (token.TokenData == "__restrict")
+		token.TokenType = Token::Type::MSVCRestrict;
+	else if (token.TokenData == "__restrict__")
+		token.TokenType = Token::Type::GCCRestrict;
+	else if (token.TokenData == "__extension__")
+		token.TokenType = Token::Type::GCCExtension;
+
 }
 
 
 int Tokenizer::IsCombinableWith( Token& token, Token& nextToken )
 {
-	if(token.TokenType == Token::Type::Whitespace)
-	{
-		if(nextToken.TokenType == Token::Type::Whitespace)
-			return 2;
-		return 1;
-	}
-	else if(token.TokenType == Token::Type::Unknown)
+    if(token.TokenType == Token::Type::Unknown)
 	{
 		if(nextToken.TokenType == Token::Type::Unknown)
 			return 2;

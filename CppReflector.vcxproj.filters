@@ -32,20 +32,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="test2.xh">
-      <Filter>Data</Filter>
-    </None>
-    <None Include="testSelf.xh">
-      <Filter>Data</Filter>
-    </None>
-    <None Include="test3.xh">
-      <Filter>Data</Filter>
-    </None>
-    <None Include="test1.xh">
-      <Filter>Data</Filter>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
     <ClInclude Include="tokenizer.h">
       <Filter>Source Files</Filter>
     </ClInclude>
@@ -58,5 +44,28 @@
     <ClInclude Include="astProcessor.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="tools.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="pthread.xh">
+      <Filter>Data</Filter>
+    </None>
+    <None Include="stdio.xh">
+      <Filter>Data</Filter>
+    </None>
+    <None Include="test1.xh">
+      <Filter>Data</Filter>
+    </None>
+    <None Include="test2.xh">
+      <Filter>Data</Filter>
+    </None>
+    <None Include="test3.xh">
+      <Filter>Data</Filter>
+    </None>
+    <None Include="testSelf.xh">
+      <Filter>Data</Filter>
+    </None>
   </ItemGroup>
 </Project>

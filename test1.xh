@@ -1,4 +1,138 @@
-std::map<int, std::vector<float>> myMap;
+class TestFunctionPointers
+{
+public:
+	void *(*__start_routine) (void *);
+	void *((*__start_routine2)) (void *);
+	void (*localFP)(int a, float);
+	void A(void (*)(int a, float));
+	void B(bool (*test)(int a, float));
+
+	void (*localFP)(int a, float), *test;
+	float A(), B(), c;
+	std::float A(), B(), c;
+	std::vector<int> A(), B(), c;
+};
+
+enum
+{
+	Anonymous=10,
+	Enumeration=20
+};
+
+class CBase
+{
+	private:
+
+		int                        iMoo;
+
+		union
+		{
+			long long          llSqueak;
+
+			struct
+			{
+				void            *pvMeow;
+				long              lBark;
+			};
+		};
+
+		struct
+		{
+			char               *pcChirp;
+		};
+};
+
+class CDerived : private CBase
+{
+	friend class CFriend;
+};
+
+class CFriend
+{
+	public:
+
+		void fnFriend( CDerived &rD )
+		{
+			rD.iMoo;		// cannot access private member declared in class 'CBase'
+			rD.pvMeow;      // WHY THE FRELL DOES THIS COMPILE?
+			rD.lBark;       // WHY THE FRELL DOES THIS COMPILE?
+			rD.pcChirp;     // cannot access private member declared in class 'CBase'
+			rD.llSqueak;    // cannot access private member declared in class 'CBase'
+		}
+};
+enum TestEnum
+{
+	Bla = 10,
+	Test = 20, 
+	Foo = 30,
+	FooBar,
+	FooTest,
+	Bla2 = 10,
+	Bla3 = Bla2+1,
+	Difficult = (10,20),
+	Hard = ({10,20},),
+	Harder = ({[20,30],},),
+	Insane = <({[20,30],},),>
+};
+
+
+class TestNestedEnum
+{
+public:
+	enum MyNestedEnum {
+		Test,
+		Something=100
+	};
+};
+
+
+// TestStrangeDefinitions
+class TestTypedef __ttypedef;
+struct TestTypedef __ttypedef2;
+union TestTypedef __ttypedef3;
+
+int myTestFunc();
+
+class TestClassWithInstances
+{
+	int _v;
+} a, *b;
+
+// TestTypedef
+class TestTypedef
+{
+	// simple typedef
+	typedef unsigned long ulong;
+ 
+	// the following two objects have the same type
+	unsigned long l1;
+	ulong l2;
+ 
+	// more complicated typedef
+	typedef int int_t, *intp_t, (*fp)(int, ulong), arr_t[10];
+ 
+	// the following two objects have the same type
+	int a1[10];
+	arr_t a2;
+ 
+	// common C idiom to avoid having to write "struct S"
+	typedef struct {int a; int b;} S, *pS;
+ 
+	// the following two objects have the same type
+	pS ps1;
+	S* ps2;
+ 
+	// error: conflicting type specifier
+	// typedef static unsigned int uint;
+ 
+	// std::add_const, like many other metafunctions, use member typedefs
+	template< class T>
+	struct add_const {
+		typedef const T type;
+	};
+};
+
+
 
 using namespace TestNamespace;
 using namespace Test::Nested::Namespace;
@@ -7,6 +141,7 @@ using std::string;
 
 class TestForwardDeclarationClass;
 struct TestForwardDeclarationStruct;
+union TestForwardDeclarationUnion;
 
 namespace TestNamespace
 {
@@ -48,6 +183,7 @@ struct
 {
 	int TestAnonymousStruct();
 };
+
 
 class TestConstructors
 {
@@ -220,17 +356,11 @@ public:
 	TestSimpleCrossReference F(int a, float b, char c, std::string d, unsigned int e, unsigned char f);
 };
 
-class TestFunctionPointers
+class TestTemplateTypes
 {
 public:
-	void (*localFP)(int a, float);
-	void A(void (*)(int a, float));
-	void B(bool (*test)(int a, float));
-
-	void (*localFP)(int a, float), *test;
-	float A(), B(), c;
-	std::float A(), B(), c;
-	std::vector<int> A(), B(), c;
+	std::map<int, std::vector<float>> a;
+	std::vector<std::unique_ptr<TestTemplateTypes>> b;
 };
 
 class TestSimpleFunctionsDirect
@@ -308,27 +438,3 @@ class TestClassOperators
 
 
 
-enum MyEnum
-{
-	Bla = 10,
-	Test = 20, 
-	Foo = 30,
-	FooBar,
-	FooTest,
-	Bla2 = 10,
-	Bla3 = Bla2+1,
-	Difficult = (10,20),
-	Hard = ({10,20},),
-	Harder = ({[20,30],},),
-	Insane = <({[20,30],},),>
-};
-
-
-class TestNestedEnum
-{
-public:
-	enum MyNestedEnum {
-		Test,
-		Something=100
-	};
-};

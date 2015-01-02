@@ -13,10 +13,6 @@
 #include <windows.h>
 #endif
 
-// TODO: friend keyword
-// TODO: friend class keyword
-
-
 int main(int argc, char** argv)
 {	
 	cmdOptions opts;
