@@ -896,6 +896,9 @@ bool ASTParser::ParseDeclarationHead(ASTNode* parent, ASTPosition& cposition, AS
 		
 	}
 
+	// parse final modifier tokens if present
+	while (ParseModifierToken(position, type->typeModifiers)) {}
+
 	// apply type and return true
 	type->typeNamespaces = tempType.typeNamespaces;
 	type->typeName = tempType.typeName;
@@ -1289,7 +1292,6 @@ bool ASTParser::ParseModifierToken(ASTPosition& cposition, std::vector<std::pair
 	return true;
 }
 
-signed short int a;
 bool ASTParser::ParseNTypeBase(ASTPosition &position, ASTType* typeNode)
 {
 	std::vector<ASTTokenIndex>& typeTokens = typeNode->typeName;
