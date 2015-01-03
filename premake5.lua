@@ -33,7 +33,7 @@ solution "CppReflector"
    project "CppReflector"
       kind "ConsoleApp"
       language "C++"
-      files { "**.h", "**.cpp" }
+      files { "**.h", "**.cpp", "**.xh"}
       flags { "Cpp11" }
 
       if _OPTIONS['openmp'] ~= nil then EnableOpenMP() end
