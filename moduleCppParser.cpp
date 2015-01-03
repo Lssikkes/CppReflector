@@ -14,9 +14,10 @@ public:
 	bool Multithreaded;
 	virtual void Execute(tools::CommandLineParser& opts, ASTNode* rootNode, std::vector<std::unique_ptr<ASTParser>>& parsers)
 	{
-		std::mutex lkSuperRoot;
+		fprintf(stderr, "********************* CPP PARSER (%s) ***********************\n", Multithreaded ? "MT" : "ST");
 
-		fprintf(stderr, "********************* CPP PARSER (%s) ***********************\n", Multithreaded?"MT":"ST");
+		std::mutex lkSuperRoot;
+		
 
 		// parse files
 		if (Multithreaded)

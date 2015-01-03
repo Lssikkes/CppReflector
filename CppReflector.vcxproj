@@ -106,6 +106,7 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="moduleCppParser.cpp" />
     <ClCompile Include="modulePrintAST.cpp" />
+    <ClCompile Include="modulePrintTypes.cpp" />
     <ClCompile Include="modules.cpp" />
     <ClCompile Include="tokenizer.cpp" />
   </ItemGroup>

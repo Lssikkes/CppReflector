@@ -312,7 +312,7 @@ bool ASTParser::ParseClass(ASTNode* parent, ASTPosition& cposition)
 		{
 			std::unique_ptr<ASTType> subInstance(new ASTType(this));
 			subInstance->type = "DCL_SUB";
-			if (ParseDeclarationSub(subNodeInstances.get(), position, subInstance.get(), true) == false)
+			if (ParseDeclarationSub(subNodeInstances.get(), position, subInstance.get(), 0, true) == false)
 				return false;
 
 			subNodeInstances->AddNode(subInstance.release());
@@ -374,8 +374,8 @@ bool ASTParser::ParseTemplate(ASTNode* parent, ASTPosition& cposition)
 		if (ParseDeclarationHead(parent, position, subType.get()) == false)
 			return false;
 
-		ParseDeclarationSub(parent, position, subType.get());
-		subType->type = "DCL_HEAD_SUB";
+		ParseDeclarationSub(parent, position, subType.get(), 0);
+		subType->type = "TEMPLATE_ARG";
 		subNodeArgs->AddNode(subType.release());
 
 		if (position.GetToken().TokenType == Token::Type::Comma)
@@ -533,7 +533,7 @@ bool ASTParser::ParseFriend(ASTNode* parent, ASTPosition& cposition)
 	subNode->type = "FRIEND";
 
 	ParseDeclarationHead(subNode.get(), position, subNode.get());
-	ParseDeclarationSub(subNode.get(), position, subNode.get());
+	ParseDeclarationSub(subNode.get(), position, subNode.get(), 0);
 	
 	if (position.GetToken().TokenType != Token::Type::Semicolon)
 		return false;
@@ -581,7 +581,7 @@ bool ASTParser::ParseTypedef(ASTNode* parent, ASTPosition& cposition)
 		{
 			std::unique_ptr<ASTType> subType2(new ASTType(this));
 			subType2->type = "DCL_SUB";
-			if (ParseDeclarationSub(parent, position, subType2.get()) == false)
+			if (ParseDeclarationSub(parent, position, subType2.get(), subType.get()) == false)
 				return false;
 
 			subType->AddNode(subType2.release());
@@ -891,7 +891,9 @@ bool ASTParser::ParseDeclarationHead(ASTNode* parent, ASTPosition& cposition, AS
 			return false; // it must be a pointer instead? (e.g. void (*test); );
 
 		argNode->type = "DCL_TEMPLATE_ARGS";
+		type->ndTemplateArgumentList = argNode.get();
 		type->AddNode(argNode.release());
+		
 	}
 
 	// apply type and return true
@@ -903,9 +905,14 @@ bool ASTParser::ParseDeclarationHead(ASTNode* parent, ASTPosition& cposition, AS
 	return true;
 }
 
-bool ASTParser::ParseDeclarationSub(ASTNode* parent, ASTPosition& cposition, ASTType* type, bool requireIdentifier)
+bool ASTParser::ParseDeclarationSub(ASTNode* parent, ASTPosition& cposition, ASTType* type, ASTType* headType, bool requireIdentifier)
 {
 	ASTPosition position = cposition;
+
+	// store head
+	type->head = headType; 
+	//if (headType != 0)
+		//type->MergeData(headType);
 
 	// parse pointers/references & pointer modifiers
 	ParseNTypePointersAndReferences(position, type, false);
@@ -920,7 +927,9 @@ bool ASTParser::ParseDeclarationSub(ASTNode* parent, ASTPosition& cposition, AST
 			return false; // it must be a pointer instead? (e.g. void (*test); );
 
 		argNode->type = "DCL_FPTR_ARGS";
+		type->ndFuncPointerArgumentList = argNode.get();
 		type->AddNode(argNode.release());
+		
 	}
 	else
 	{
@@ -941,6 +950,7 @@ bool ASTParser::ParseDeclarationSub(ASTNode* parent, ASTPosition& cposition, AST
 			return false; // invalid function arguments
 
 		argNode->type = "DCL_FUNC_ARGS";
+		type->ndFuncArgumentList = argNode.get();
 		type->AddNode(argNode.release());
 
 		// parse function modifiers if present
@@ -951,6 +961,7 @@ bool ASTParser::ParseDeclarationSub(ASTNode* parent, ASTPosition& cposition, AST
 		{
 			std::unique_ptr<ASTNode> funcModifier(new ASTNode());
 			funcModifier->type = "DCL_FUNC_MOD";
+			type->ndFuncModifierList = funcModifier.get();
 
 			// fill modifier data
 			for (int i = 0; i < funcModifiers.size(); i++)
@@ -1101,7 +1112,7 @@ bool ASTParser::_ParseDeclaration_HeadSubs(ASTPosition &position, ASTNode* paren
 		std::unique_ptr<ASTType> subtype(new ASTType(this));
 		subtype->typeIdentifier.clear();
 
-		if (ParseDeclarationSub(parent, position, subtype.get(), true) == false)
+		if (ParseDeclarationSub(parent, position, subtype.get(), headType.get(), true) == false)
 		{
 			// sub parsing failed - this might be because the head parsing was invalid.. let's find out..
 			// P.S. we can't explicitly check whether the head is correct or not since we don't know anything about types (everything is a keyword or a built-in type), so we have to make some educated guesses.
@@ -1116,7 +1127,7 @@ bool ASTParser::_ParseDeclaration_HeadSubs(ASTPosition &position, ASTNode* paren
 
 			// try parse again when iteration 0 but pretend the head was not valid..
 			std::unique_ptr<ASTType> subtype2(new ASTType(this));
-			if (subCount == 0 && ParseDeclarationSub(parent, beforeHeadPosition, subtype2.get(), true))
+			if (subCount == 0 && ParseDeclarationSub(parent, beforeHeadPosition, subtype2.get(), 0, true))
 			{
 				// it probably was since we can parse the sub now - clear head types
 				headType.get()->typeName.clear();
@@ -1543,8 +1554,8 @@ bool ASTParser::ParseDeclarationSubArguments(ASTPosition &position, ASTNode* par
 		if (ParseDeclarationHead(parent, position, subType.get()) == false)
 			return false;
 
-		ParseDeclarationSub(parent, position, subType.get());
-		subType->type = "DCL_HEAD_SUB";
+		ParseDeclarationSub(parent, position, subType.get(), 0);
+		subType->type = "DCL_ARG";
 		parent->AddNode(subType.release());
 
 		if (position.GetToken().TokenType == Token::Type::Comma)
@@ -1606,6 +1617,19 @@ void ASTParser::ParseBOM(ASTPosition &position)
 }
 
 
+std::vector<ASTNode*> ASTNode::GatherAllChildren() const
+{
+	std::vector<ASTNode*> ret;
+	
+	for (auto& it : m_children)
+	{ 
+		auto& subChildren = it->GatherAllChildren(); 
+		ret.push_back(it);
+		ret.insert(ret.end(), subChildren.begin(), subChildren.end()); 
+	}
+	return ret;
+}
+
 const std::string& ASTType::GetType() const
 {
 	return type;
@@ -1626,18 +1650,54 @@ std::string ASTPointerType::ToString()
 std::string ASTType::ToString()
 {
 	std::string ret;
+
+	if (head != 0)
+	{
+		ASTType t(tokenSource);
+		t.MergeData(this);
+		t.MergeData(head);
+		return t.ToString();
+	}
+
+	// type modifiers
 	for (auto& it : typeModifiers)
 	{
 		for (int i = it.first; i <= it.second; i++)
 			ret += tokenSource->Tokens[i].TokenData + "";
 		ret += " ";
 	}
+
+	// namespace symbols
 	for (auto& it : typeNamespaces)
 		ret += tokenSource->Tokens[it].TokenData + "::";
+	
+	// name symbols
 	for (auto& it : typeName)
 		ret += tokenSource->Tokens[it].TokenData + " ";
+
+	// template arguments
+	if (ndTemplateArgumentList)
+	{
+		if (ret.size() > 0 && ret.back() == ' ')
+			ret.pop_back(); // remove trailing space
+
+		auto& children = ndTemplateArgumentList->Children();
+		ret += "<";
+		for (auto& it : children)
+		{
+			ASTType* t = dynamic_cast<ASTType*>(it);
+			ret += t->ToString();
+			if (it != children.back())
+				ret += ", ";
+		}
+		ret += "> ";
+	}
+
+	// pointer symbols (including pointer modifiers)
 	for (auto& it : typePointers)
 		ret += it.ToString() + " ";
+
+	// array tokens
 	for (auto& it : typeArrayTokens)
 	{
 		ret += "[";
@@ -1647,18 +1707,45 @@ std::string ASTType::ToString()
 	}
 
 	if (typeArrayTokens.size() > 0) ret += " ";
-	
+
+	// function pointer prefix
+	if (ndFuncPointerArgumentList)
+		ret += "(*";
+
+	// identifier
 	for (auto& it : typeIdentifier)
 		ret += tokenSource->Tokens[it].TokenData;
 
-	if (typeIdentifier.size() > 0) ret += " ";
+	// function pointer suffix
+	if (ndFuncPointerArgumentList)
+		ret += ")";
+	else if (typeIdentifier.size() > 0) ret += " ";
 
+	// operator
 	for (auto& it : typeOperatorTokens)
 		ret += tokenSource->Tokens[it].TokenData;
 
 	if (typeOperatorTokens.size() > 0) ret += " ";
 		
-
+	// function arguments
+	ASTNode* args = 0;
+	if (args == 0 && ndFuncArgumentList)
+		args = ndFuncArgumentList;
+	if (args == 0 && ndFuncPointerArgumentList)
+		args = ndFuncPointerArgumentList;
+	if (args)
+	{
+		auto& children = args->Children();
+		ret += "(";
+		for (auto& it : children)
+		{
+			ASTType* t = dynamic_cast<ASTType*>(it);
+			ret += t->ToString();
+			if (it != children.back())
+				ret += ", ";
+		}
+		ret += ")";
+	}
 		
 	// remove trailing space
 	if (ret.size() > 0 && ret.back() == ' ')
@@ -1670,9 +1757,8 @@ std::string ASTType::ToString()
 }
 
 
-void ASTType::MergeIntoSelf(ASTType* other)
+void ASTType::MergeData(ASTType* other)
 {
-	StealNodesFrom(other);
 	typeNamespaces.insert(typeNamespaces.end(), other->typeNamespaces.begin(), other->typeNamespaces.end());
 	typeName.insert(typeName.end(), other->typeName.begin(), other->typeName.end());
 	typeIdentifier.insert(typeIdentifier.end(), other->typeIdentifier.begin(), other->typeIdentifier.end());
@@ -1684,6 +1770,14 @@ void ASTType::MergeIntoSelf(ASTType* other)
 	typeFunctionPointerPointers.insert(typeFunctionPointerPointers.end(), other->typeFunctionPointerPointers.begin(), other->typeFunctionPointerPointers.end());
 	typeFunctionPointerArgumentIndices.insert(typeFunctionPointerArgumentIndices.end(), other->typeFunctionPointerArgumentIndices.begin(), other->typeFunctionPointerArgumentIndices.end());
 
+	if (other->ndTemplateArgumentList)
+		ndTemplateArgumentList  		=	 other->ndTemplateArgumentList;
+	if (other->ndFuncArgumentList)
+		ndFuncArgumentList				=	 other->ndFuncArgumentList;
+	if (other->ndFuncModifierList)
+		ndFuncModifierList				=	 other->ndFuncModifierList;
+	if (other->ndFuncPointerArgumentList)
+		ndFuncPointerArgumentList		=	 other->ndFuncPointerArgumentList;
 }
 
 

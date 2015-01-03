@@ -14,7 +14,7 @@ typedef unsigned int ASTTokenIndex;
 class ASTNode
 {
 public:
-	ASTNode() { }
+	ASTNode() { parent = 0; }
 	virtual ~ASTNode() { DestroyChildren(); }
 
 	void DestroyChildren() { for (auto it : m_children) { it->DestroyChildren(); delete it; } m_children.clear(); }
@@ -25,6 +25,8 @@ public:
 	void AddNodes(const std::vector<ASTNode*>& nodes) { for (auto it : nodes) it->parent = this; m_children.insert(m_children.end(), nodes.begin(), nodes.end()); }
 	void StealNodesFrom(ASTNode* node) { AddNodes(node->Children()); node->m_children.clear(); }
 	const std::vector<ASTNode*>& Children() const { return m_children; }
+	std::vector<ASTNode*> GatherAllChildren() const;
+
 	virtual const std::string& GetType() const { return type; }
 	virtual const std::vector<std::string>& GetData() { return data; }
 	ASTNode* GetParent() const { return parent; }
@@ -65,6 +67,11 @@ class ASTType : public ASTNode
 public:
 	ASTType(ASTTokenSource* src) : tokenSource(src) { type = "TYPE"; }
 	ASTTokenSource* tokenSource;
+	ASTType* head = 0;
+	ASTNode* ndTemplateArgumentList = 0;
+	ASTNode* ndFuncArgumentList = 0;
+	ASTNode* ndFuncModifierList = 0;
+	ASTNode* ndFuncPointerArgumentList = 0;
 	std::vector<ASTTokenIndex> typeNamespaces;
 	std::vector<ASTTokenIndex> typeName;
 	std::vector<ASTTokenIndex> typeIdentifier;
@@ -79,5 +86,5 @@ public:
 	virtual const std::vector<std::string>& GetData();
 	std::string ToString();
 	virtual const std::string& GetType() const;
-	void MergeIntoSelf(ASTType* other);
+	void MergeData(ASTType* other);
 };

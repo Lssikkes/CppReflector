@@ -5,8 +5,6 @@
 #include <memory>
 #include "ast.h"
 
-
-
 class ASTParser: public ASTTokenSource
 {
 public:
@@ -62,7 +60,7 @@ protected:
 	bool _ParseDeclaration_HeadSubs(ASTPosition &position, ASTNode* parent, std::unique_ptr<ASTType> &headType, int &lastSubID);
 
 	bool ParseDeclarationHead(ASTNode* parent, ASTPosition& cposition, ASTType* type);
-	bool ParseDeclarationSub(ASTNode* parent, ASTPosition& cposition, ASTType* type, bool requireIdentifier=false);
+	bool ParseDeclarationSub(ASTNode* parent, ASTPosition& cposition, ASTType* type, ASTType* headType, bool requireIdentifier=false);
 	bool ParseModifierToken(ASTPosition& position, std::vector<std::pair<ASTTokenIndex, ASTTokenIndex>>& modifierTokens);
 	bool ParseMSVCDeclspecOrGCCAttribute(ASTPosition &position, std::pair<ASTTokenIndex, ASTTokenIndex>& outTokenStream);
 

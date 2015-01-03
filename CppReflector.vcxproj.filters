@@ -39,6 +39,9 @@
     <ClCompile Include="moduleCppParser.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="modulePrintTypes.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="tokenizer.h">

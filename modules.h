@@ -2,7 +2,7 @@
 #include <map>
 #include <memory>
 
-namespace tools { class CommandLineParser; }
+namespace tools { struct CommandLineParser; }
 class ASTNode;
 class ASTParser;
 
