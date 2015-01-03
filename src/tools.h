@@ -6,7 +6,9 @@
 #include <set>
 #include <stdlib.h>
 #include <string.h>
+#ifdef _MSC_VER
 #include <intrin.h>
+#endif
 
 namespace tools
 {
@@ -57,12 +59,9 @@ namespace tools
 			}
 
 		}
-	}
 #else 
 		// Software CRC32
-		const unsigned char *p;
-
-		p = buf;
+		const unsigned char *p = reinterpret_cast<const unsigned char*>(data);
 		crc0 = crc0 ^ ~0U;
 
 		while (size--)
@@ -70,6 +69,7 @@ namespace tools
 
 		return crc0 ^ ~0U;
 #endif
+	}
 
 
 	static unsigned long crc32String(const std::string& data)

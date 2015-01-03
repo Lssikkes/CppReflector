@@ -1,6 +1,11 @@
 #pragma once
 
+#ifndef _MSC_VER
+#define __forceinline __inline
+#endif
+
 #include <string>
+#include <string.h>
 
 struct Token
 {
