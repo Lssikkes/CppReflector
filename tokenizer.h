@@ -21,6 +21,7 @@ struct Token
 		LArrow, // <
 		RArrow, // >
 		Dot, // .
+		DotDotDot, // ... (a review by axman13)
 		Comma, // ,
 		Doublecolon, // ::
 		Colon, // :
@@ -40,16 +41,19 @@ struct Token
 		Number, // [0-9][.0-9]*[f]?
 		Class, // class
 		Struct, // struct
+		Union, // union
 		Enum, // enum
 		Public, // public
 		Private, // private
 		Protected, // protected
 		Unsigned, // unsigned
+		Signed, // signed
 		Static, // static
 		Undefined, // undefined
 		Allocate, // allocate
 		Virtual, // virtual
 		Inline, // inline
+		Restrict, // restrict
 		Volatile, // volatile
 		Extern, // extern
 		Mutable, // mutable
@@ -59,7 +63,12 @@ struct Token
 		Typedef, // typedef
 		Namespace, // namespace
 		Using, // using
-		ForceInline, // __forceinline
+		MSVCForceInline, // __forceinline
+		GCCAttribute, // __attribute__
+		MSVCRestrict, // __restrict
+		GCCRestrict, // __restrict__
+		GCCExtension, // __extension__
+		MSVCDeclspec, // __declspec
 		Friend, // friend
 		String,
 		CharConstant,
@@ -69,6 +78,7 @@ struct Token
 		BuiltinType, // int64|int|short|char|long|double|float|bool
 		Unknown, // <everything else>
 		EndOfStream, // 0 bytes remaining
+		BOM_UTF8, // 0xEF,0xBB,0xBF
 	};
 	Token(): TokenType(Type::Init) {}
 

@@ -1,10 +1,5 @@
-#include "tokenizer.h"
-#include "astProcessor.h"
-#include "astGenerator.h"
 #include "tools.h"
-#include <omp.h>
 #include <iostream>
-#include <mutex>
 
 #ifdef VLD_MEM_DEBUGGER
 #include <vld.h>
@@ -13,57 +8,42 @@
 #include <windows.h>
 #endif
 
-// TODO: friend keyword
-// TODO: friend class keyword
-
+#include "modules.h"
+#include "ast.h"
+#include "astGenerator.h"
 
 int main(int argc, char** argv)
-{	
-	cmdOptions opts;
-	cmdOptions::parse(opts, argc, argv);
-	
-	std::mutex lkSuperRoot;
-	std::vector<std::unique_ptr<ASTParser>> parsers;
+{
+	// parse command line arguments
+	tools::CommandLineParser opts;
+	tools::CommandLineParser::parse(opts, argc, argv);
 
+	// create root objects
+	std::vector<std::unique_ptr<ASTParser>> parsers;
 	ASTNode superRoot;
 	superRoot.SetType("ROOT");
-	
-	#pragma omp parallel for
-	for(int i=0; i<opts.names.size(); i++)
-	{
-		StringTokenizer stokenizer(readFromFile(opts.names[i]));
-		std::unique_ptr<ASTParser> parser(new ASTParser(stokenizer));
-		
-		// enable verbosity
-		if(opts.options.find("verbose") != opts.options.end())
-			parser->Verbose = true;
-		
-		std::unique_ptr<ASTNode> root(new ASTNode);
-		root->SetType("FILE");
-		root->AddData(opts.names[i]);
 
-		ASTParser::ASTPosition position(*parser.get());
-		try
-		{
-			if (parser->Parse(root.get(), position))
-			{
-				// store parser - we need the tokens later
-				parsers.push_back(std::move(parser));
-				
-				lkSuperRoot.lock();
-				superRoot.AddNode(root.release());
-				lkSuperRoot.unlock();
-			}
-			else
-				printf("Error during parse.\n");
-			
-		}
-		catch (std::exception e)
-		{
-			printf("Fatal error during parse (line %d): %s\n", position.GetToken().TokenLine, e.what());
-		}
+	// check whether help is needed
+	if (opts.optionsWithValues["module"].size() == 0)
+	{
+		fprintf(stderr, "Supported modules:\n");
+		auto& modules = ModuleRegistration::Modules();
+		for (auto it : modules)
+			fprintf(stderr, " * \"%s\"\n", it.first.c_str());
 	}
 
-	printf("Parse successful.\n");
-	ASTProcessor::Print(&superRoot);
+	// execute modules
+	auto& modules = ModuleRegistration::Modules();
+	for (auto itModule : opts.optionsWithValues["module"])
+	{
+		auto& mod = modules.find(itModule);
+		if (mod == modules.end())
+		{
+			fprintf(stderr, "Could not find module \"%s\"", itModule.c_str());
+			continue;
+		}
+
+		(*mod).second->Handler()->Execute(opts, &superRoot, parsers);
+	}
+
 }

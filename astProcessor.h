@@ -5,5 +5,5 @@
 class ASTProcessor
 {
 public:
-	static void Print(ASTNode* node, int level=0);
+	static void Print(FILE* dev, ASTNode* node, int level=0);
 };

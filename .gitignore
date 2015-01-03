@@ -33,3 +33,5 @@
 /out.txt
 /Makefile
 /test.txt
+*.vsp
+*.psess
