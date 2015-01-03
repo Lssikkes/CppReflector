@@ -56,9 +56,8 @@ public:
 			if (parser->Parse(root.get(), position))
 			{
 				// store parser - we need the tokens later
-				parsers.push_back(std::move(parser));
-
 				lkSuperRoot.lock();
+				parsers.push_back(std::move(parser));
 				rootNode->AddNode(root.release());
 				lkSuperRoot.unlock();
 			}
