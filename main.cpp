@@ -36,7 +36,7 @@ int main(int argc, char** argv)
 	auto& modules = ModuleRegistration::Modules();
 	for (auto itModule : opts.optionsWithValues["module"])
 	{
-		auto& mod = modules.find(itModule);
+		auto mod = modules.find(itModule);
 		if (mod == modules.end())
 		{
 			fprintf(stderr, "Could not find module \"%s\"", itModule.c_str());

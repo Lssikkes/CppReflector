@@ -294,7 +294,7 @@ bool ASTParser::ParseClass(ASTNode* parent, ASTPosition& cposition)
 			std::vector<ASTTokenIndex> tokens;
 			ParseSpecificScopeInner(position, tokens, Token::Type::LBrace, Token::Type::RBrace, ASTPosition::FilterNone);
 			if (Verbose)
-				fprintf(stderr, "[PARSER] discarding unknown scope in class/struct: %s", CombineTokens(this, tokens, ""));
+				fprintf(stderr, "[PARSER] discarding unknown scope in class/struct: %s", CombineTokens(this, tokens, "").c_str());
 		}
 		else
 		{
@@ -1623,7 +1623,7 @@ std::vector<ASTNode*> ASTNode::GatherAllChildren() const
 	
 	for (auto& it : m_children)
 	{ 
-		auto& subChildren = it->GatherAllChildren(); 
+		auto subChildren = it->GatherAllChildren(); 
 		ret.push_back(it);
 		ret.insert(ret.end(), subChildren.begin(), subChildren.end()); 
 	}
