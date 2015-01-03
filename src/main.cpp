@@ -14,6 +14,7 @@
 
 int main(int argc, char** argv)
 {
+	
 	// parse command line arguments
 	tools::CommandLineParser opts;
 	tools::CommandLineParser::parse(opts, argc, argv);

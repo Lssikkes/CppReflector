@@ -23,7 +23,7 @@ public:
 		if (Multithreaded)
 		{
 			#pragma omp parallel for
-			for (size_t i = 0; i < opts.names.size(); i++)
+			for (int i = 0; i < opts.names.size(); i++)
 			{
 				ParseFile(opts, i, parsers, lkSuperRoot, rootNode);
 			}

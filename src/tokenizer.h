@@ -94,17 +94,34 @@ struct Token
 class Tokenizer
 {
 public:
+	struct Data
+	{
+		const char* data;
+		size_t length;
+
+		size_t size() { return length; }
+		char at(size_t index) { return data[index]; }
+		const char* c_str() { return data; }
+		inline std::string str() { return std::string(data, length); }
+		bool operator == (const char* v) const { size_t ln = strlen(v); if (ln != length) return false; return memcmp(v, data, length) == 0;  }
+		bool operator != (const char* v) const { size_t ln = strlen(v); if (ln != length) return true; return memcmp(v, data, length) != 0; }
+	};
 	Token GetNextToken();
 	void Debug();
 protected:
 	Tokenizer(): m_offset(0) {}
 
-	virtual std::string PeekBytes(int numBytes, int offset=0)=0;
+	virtual Tokenizer::Data PeekBytes(int numBytes, int offset = 0) = 0;
 	virtual int Advance(int numBytes)=0;
 
 	Token PeekNextToken(int& offset);
 
-	int AddPart( Token &token, const std::string &next, int& offset );
+	__forceinline int AddPart(Token &token, const Data &next, int& offset)
+	{
+		token.TokenData += std::string(next.data, next.length);
+		offset += (int)next.length;
+		return offset;
+	}
 
 	int IsCombinableWith(Token& tok, Token& nextToken);
 	void ConvertToSpecializedKeyword(Token& tokKeyword);
@@ -116,8 +133,8 @@ class StringTokenizer: public Tokenizer
 public:
 	StringTokenizer(std::string data) { Source = data; }
 protected:
-	virtual std::string PeekBytes( int numBytes, int offset=0 );
-	virtual int Advance( int numBytes );
+	virtual Tokenizer::Data PeekBytes(int numBytes, int offset=0);
+	virtual int Advance(int numBytes);
 
 	std::string Source;
 };

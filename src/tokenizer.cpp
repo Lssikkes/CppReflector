@@ -1,10 +1,13 @@
 #include "tokenizer.h"
 #include <stdexcept>
+#include <map>
+#include "tools.h"
 
 Token Tokenizer::PeekNextToken(int& offset)
 {
 	Token token;
-	token.TokenData = PeekBytes(1, offset);
+	auto dt = PeekBytes(1, offset);
+	token.TokenData = std::string(dt.data, dt.length);
 	token.TokenByteOffset = m_offset + offset;
 	offset += token.TokenData.size();
 
@@ -13,7 +16,7 @@ Token Tokenizer::PeekNextToken(int& offset)
 	else if (token.TokenData.at(0) == ' ' || token.TokenData.at(0) == '\t')
 	{
 		token.TokenType = Token::Type::Whitespace;
-		std::string next;
+		Data next;
 		while (true)
 		{
 			next = PeekBytes(1, offset);
@@ -65,7 +68,7 @@ Token Tokenizer::PeekNextToken(int& offset)
 		token.TokenType = Token::Type::Equals;
 	else if (token.TokenData.at(0) == '.')
 	{
-		std::string next = PeekBytes(2, offset);
+		auto next = PeekBytes(2, offset);
 		if (next == "..")
 		{
 			token.TokenType = Token::Type::DotDotDot;
@@ -79,7 +82,7 @@ Token Tokenizer::PeekNextToken(int& offset)
 	else if(token.TokenData.at(0) == '/')
 	{
 		// COMMENTS
-		std::string next = PeekBytes(1, offset);
+		auto next = PeekBytes(1, offset);
 		if(next == "*")
 		{
 			token.TokenType = Token::Type::CommentMultiLine;
@@ -87,7 +90,7 @@ Token Tokenizer::PeekNextToken(int& offset)
 			offset = AddPart(token, next, offset);
 
 			int counter = 1;
-			std::string next = PeekBytes(2, offset);
+			auto next = PeekBytes(2, offset);
 			while(true)
 			{
 				if(next == "/*")
@@ -105,8 +108,8 @@ Token Tokenizer::PeekNextToken(int& offset)
 				if(next.size() == 0)
 					throw std::runtime_error("end of file reached while parsing multi line comment");
 				
-				std::string fragment = next.substr(0, 1); 
-				offset = AddPart(token, fragment, offset);
+				next.length = 1;
+				offset = AddPart(token, next, offset);
 
 				// continue
 				next = PeekBytes(2, offset);
@@ -118,7 +121,7 @@ Token Tokenizer::PeekNextToken(int& offset)
 
 			offset = AddPart(token, next, offset);
 
-			std::string next = PeekBytes(1, offset);
+			auto next = PeekBytes(1, offset);
 			while(next.size() > 0 && next.at(0) != '\n' && next.at(0) != '\r' )
 			{
 				offset = AddPart(token, next, offset); // add part
@@ -136,7 +139,7 @@ Token Tokenizer::PeekNextToken(int& offset)
 		else 
 			token.TokenType = Token::Type::CharConstant;
 
-		std::string next = PeekBytes(1, offset);
+		auto next = PeekBytes(1, offset);
 		while(true)
 		{
 			offset = AddPart(token, next, offset);
@@ -175,13 +178,13 @@ Token Tokenizer::PeekNextToken(int& offset)
 					token.TokenParsedData += "?";
 				}
 			}
-			else if(next == token.TokenData.substr(0, 1))
+			else if(next == token.TokenData.substr(0, 1).c_str())
 				break; // end of string
 			else if(next == "")
 				throw std::runtime_error("end of line reached while parsing string/character sequence");
 			else
 			{
-				token.TokenParsedData += next;
+				token.TokenParsedData += next.str();
 			}
 
 			next = PeekBytes(1, offset);
@@ -191,7 +194,7 @@ Token Tokenizer::PeekNextToken(int& offset)
 	{
 		token.TokenType = Token::Type::Keyword;
 
-		std::string next = PeekBytes(1, offset);
+		auto next = PeekBytes(1, offset);
 		while(next.size() > 0 && ((next.at(0) >= 'a' && next.at(0) <= 'z') || (next.at(0) >= 'A' && next.at(0) <= 'Z') || (next.at(0) >= '0' && next.at(0) <= '9') || next.at(0) == '_' ||  next.at(0) == '-') )
 		{
 			offset = AddPart(token, next, offset);
@@ -204,7 +207,7 @@ Token Tokenizer::PeekNextToken(int& offset)
 	{
 		token.TokenType = Token::Type::Number;
 
-		std::string next = PeekBytes(1, offset);
+		auto next = PeekBytes(1, offset);
 
 		while(next.size() > 0 && ((next.at(0) >= '0' && next.at(0) <= '9') || next.at(0) == '.') )
 		{
@@ -220,7 +223,7 @@ Token Tokenizer::PeekNextToken(int& offset)
 	else if(token.TokenData.at(0) == ':')
 	{
 		token.TokenType = Token::Type::Colon;
-		std::string next = PeekBytes(1, offset);
+		auto next = PeekBytes(1, offset);
 		if(next == ":")
 		{
 			token.TokenType = Token::Type::Doublecolon;
@@ -230,7 +233,7 @@ Token Tokenizer::PeekNextToken(int& offset)
 	else if(token.TokenData.at(0) == '\r')
 	{
 		token.TokenType = Token::Type::Newline;
-		std::string next = PeekBytes(1, offset);
+		auto next = PeekBytes(1, offset);
 		if(next == "\n")
 			offset = AddPart(token, next, offset);
 	}
@@ -238,7 +241,7 @@ Token Tokenizer::PeekNextToken(int& offset)
 	{
 		// 0xEF, 0xBB, 0xBF
 		char bomContinuation[] = { static_cast<char>(0xBB), static_cast<char>(0xBF), 0 };
-		std::string next = PeekBytes(2, offset);
+		auto next = PeekBytes(2, offset);
 		if (next == bomContinuation)
 		{
 			token.TokenType = Token::Type::BOM_UTF8;
@@ -252,88 +255,61 @@ Token Tokenizer::PeekNextToken(int& offset)
 	return token;
 }
 
+std::map<unsigned long, Token::Type> gTokenTypes;
+void PopulateTokenTypes()
+{
+	gTokenTypes[tools::crc32String("public")] = Token::Type::Public;
+	gTokenTypes[tools::crc32String("protected")] = Token::Type::Protected;
+	gTokenTypes[tools::crc32String("private")] = Token::Type::Private;
+	gTokenTypes[tools::crc32String("class")] = Token::Type::Class;
+	gTokenTypes[tools::crc32String("struct")] = Token::Type::Struct;
+	gTokenTypes[tools::crc32String("union")] = Token::Type::Union;
+	gTokenTypes[tools::crc32String("const")] = Token::Type::Const;
+	gTokenTypes[tools::crc32String("unsigned")] = Token::Type::Unsigned;
+	gTokenTypes[tools::crc32String("signed")] = Token::Type::Signed;
+	gTokenTypes[tools::crc32String("null")] = Token::Type::Null;
+	gTokenTypes[tools::crc32String("void")] = Token::Type::Void;
+	gTokenTypes[tools::crc32String("int")] = Token::Type::BuiltinType;
+	gTokenTypes[tools::crc32String("short")] = Token::Type::BuiltinType;
+	gTokenTypes[tools::crc32String("long")] = Token::Type::BuiltinType;
+	gTokenTypes[tools::crc32String("float")] = Token::Type::BuiltinType;
+	gTokenTypes[tools::crc32String("double")] = Token::Type::BuiltinType;
+	gTokenTypes[tools::crc32String("char")] = Token::Type::BuiltinType;
+	gTokenTypes[tools::crc32String("undefined")] = Token::Type::Undefined;
+	gTokenTypes[tools::crc32String("enum")] = Token::Type::Enum;
+	gTokenTypes[tools::crc32String("virtual")] = Token::Type::Virtual;
+	gTokenTypes[tools::crc32String("volatile")] = Token::Type::Volatile;
+	gTokenTypes[tools::crc32String("mutable")] = Token::Type::Mutable;
+	gTokenTypes[tools::crc32String("extern")] = Token::Type::Extern;
+	gTokenTypes[tools::crc32String("inline")] = Token::Type::Inline;
+	gTokenTypes[tools::crc32String("static")] = Token::Type::Static;
+	gTokenTypes[tools::crc32String("operator")] = Token::Type::Operator;
+	gTokenTypes[tools::crc32String("template")] = Token::Type::Template;
+	gTokenTypes[tools::crc32String("typedef")] = Token::Type::Typedef;
+	gTokenTypes[tools::crc32String("typename")] = Token::Type::Typename;
+	gTokenTypes[tools::crc32String("namespace")] = Token::Type::Namespace;
+	gTokenTypes[tools::crc32String("using")] = Token::Type::Using;
+	gTokenTypes[tools::crc32String("friend")] = Token::Type::Friend;
+	gTokenTypes[tools::crc32String("__forceinline")] = Token::Type::MSVCForceInline;
+	gTokenTypes[tools::crc32String("restrict")] = Token::Type::Restrict;
+	gTokenTypes[tools::crc32String("__inline")] = Token::Type::Inline;
+	gTokenTypes[tools::crc32String("__declspec")] = Token::Type::MSVCDeclspec;
+	gTokenTypes[tools::crc32String("__attribute__")] = Token::Type::GCCAttribute;
+	gTokenTypes[tools::crc32String("__restrict")] = Token::Type::MSVCRestrict;
+	gTokenTypes[tools::crc32String("__restrict__")] = Token::Type::GCCRestrict;
+	gTokenTypes[tools::crc32String("__extension__")] = Token::Type::GCCExtension;
+
+}
+
 void Tokenizer::ConvertToSpecializedKeyword( Token& token )
 {
-	if(token.TokenData == "public")
-		token.TokenType = Token::Type::Public;
-	else if(token.TokenData == "protected")
-		token.TokenType = Token::Type::Protected;
-	else if(token.TokenData == "private")
-		token.TokenType = Token::Type::Private;
-	else if(token.TokenData == "class")
-		token.TokenType = Token::Type::Class;
-	else if (token.TokenData == "struct")
-		token.TokenType = Token::Type::Struct;
-	else if (token.TokenData == "union")
-		token.TokenType = Token::Type::Union;
-	else if(token.TokenData == "const")
-		token.TokenType = Token::Type::Const;
-	else if(token.TokenData == "unsigned")
-		token.TokenType = Token::Type::Unsigned;
-	else if (token.TokenData == "signed")
-		token.TokenType = Token::Type::Signed;
-	else if(token.TokenData == "null")
-		token.TokenType = Token::Type::Null;
-	else if(token.TokenData == "void")
-		token.TokenType = Token::Type::Void;
-	else if(token.TokenData == "int")
-		token.TokenType = Token::Type::BuiltinType;
-	else if(token.TokenData == "short")
-		token.TokenType = Token::Type::BuiltinType;
-	else if(token.TokenData == "long")
-		token.TokenType = Token::Type::BuiltinType;
-	else if(token.TokenData == "float")
-		token.TokenType = Token::Type::BuiltinType;
-	else if(token.TokenData == "double")
-		token.TokenType = Token::Type::BuiltinType;
-	else if(token.TokenData == "char")
-		token.TokenType = Token::Type::BuiltinType;
-	else if(token.TokenData == "undefined")
-		token.TokenType = Token::Type::Undefined;
-	else if(token.TokenData == "enum")
-		token.TokenType = Token::Type::Enum;
-	else if(token.TokenData == "virtual")
-		token.TokenType = Token::Type::Virtual;
-	else if(token.TokenData == "volatile")
-		token.TokenType = Token::Type::Volatile;
-	else if(token.TokenData == "mutable")
-		token.TokenType = Token::Type::Mutable;
-	else if(token.TokenData == "extern")
-		token.TokenType = Token::Type::Extern;
-	else if(token.TokenData == "inline")
-		token.TokenType = Token::Type::Inline;
-	else if (token.TokenData == "static")
-		token.TokenType = Token::Type::Static;
-	else if (token.TokenData == "operator")
-		token.TokenType = Token::Type::Operator;
-	else if (token.TokenData == "template")
-		token.TokenType = Token::Type::Template;
-	else if (token.TokenData == "typedef")
-		token.TokenType = Token::Type::Typedef;
-	else if (token.TokenData == "typename")
-		token.TokenType = Token::Type::Typename;
-	else if (token.TokenData == "namespace")
-		token.TokenType = Token::Type::Namespace;
-	else if (token.TokenData == "using")
-		token.TokenType = Token::Type::Using;
-	else if (token.TokenData == "friend")
-		token.TokenType = Token::Type::Friend;
-	else if (token.TokenData == "__forceinline")
-		token.TokenType = Token::Type::MSVCForceInline;
-	else if (token.TokenData == "restrict")
-		token.TokenType = Token::Type::Restrict;
-	else if (token.TokenData == "__inline")
-		token.TokenType = Token::Type::Inline;
-	else if (token.TokenData == "__declspec")
-		token.TokenType = Token::Type::MSVCDeclspec;
-	else if (token.TokenData == "__attribute__")
-		token.TokenType = Token::Type::GCCAttribute;
-	else if (token.TokenData == "__restrict")
-		token.TokenType = Token::Type::MSVCRestrict;
-	else if (token.TokenData == "__restrict__")
-		token.TokenType = Token::Type::GCCRestrict;
-	else if (token.TokenData == "__extension__")
-		token.TokenType = Token::Type::GCCExtension;
+	if (gTokenTypes.empty())
+		PopulateTokenTypes();
+
+	unsigned long hsh = tools::crc32String(token.TokenData);
+	auto loc = gTokenTypes.find(hsh);
+	if (loc != gTokenTypes.end())
+		token.TokenType = loc->second;
 
 }
 
@@ -371,23 +347,24 @@ Token Tokenizer::GetNextToken()
 	return token;
 }
 
-int Tokenizer::AddPart( Token &token, const std::string &next, int& offset )
-{
-	token.TokenData += next;
-	offset += next.size();	
-	return offset;
-}
 
-std::string StringTokenizer::PeekBytes( int numBytes, int offset)
+
+Tokenizer::Data StringTokenizer::PeekBytes(int numBytes, int offset)
 {
 	int noffset = m_offset + offset;
 	if(noffset + numBytes > Source.size())
 		numBytes = Source.size() - noffset;
 
-	if(numBytes <= 0)
-		return "";
-
-	return Source.substr(noffset, numBytes);
+	if (numBytes <= 0)
+	{
+		Data dt = { "", 0 };
+		return dt;
+	}
+	else
+	{
+		Data dt = { Source.c_str() + noffset, numBytes};
+		return dt;
+	}
 }
 
 int StringTokenizer::Advance( int numBytes )

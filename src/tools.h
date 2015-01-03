@@ -6,9 +6,81 @@
 #include <set>
 #include <stdlib.h>
 #include <string.h>
+#include <intrin.h>
 
 namespace tools
 {
+
+	extern unsigned int crc32_tab[];
+
+	static unsigned long crc32String(const char* data, size_t size, unsigned long crc0=0)
+	{
+#ifdef _MSC_VER
+		// Hardware CRC32
+#ifdef _WIN64
+		unsigned long long crc = crc0;
+#else 
+		unsigned long crc = crcBase;
+#endif
+		while (true)
+		{
+			switch (size)
+			{
+			case 0:
+				return (unsigned long)crc;
+			case 1:
+				crc = _mm_crc32_u8((unsigned long)crc, *(unsigned char*)data);
+				data += 1; size -= 1;
+				break;
+			case 2:
+			case 3:
+				crc = _mm_crc32_u16((unsigned long)crc, *(unsigned short*)data);
+				data += 2; size -= 2;
+				break;
+			case 4:
+			case 5:
+			case 6:
+			case 7:
+#ifndef _WIN64
+			default:
+#endif
+				crc = _mm_crc32_u32((unsigned long)crc, *(unsigned long*)data);
+				data += 4; size -= 4;
+				break;
+#ifdef _WIN64
+			default:
+			case 8:
+				crc = _mm_crc32_u64(crc, *(unsigned long long*)data);
+				data += 8; size -= 8;
+#endif
+
+			}
+
+		}
+	}
+#else 
+		// Software CRC32
+		const unsigned char *p;
+
+		p = buf;
+		crc0 = crc0 ^ ~0U;
+
+		while (size--)
+			crc0 = crc32_tab[(crc0 ^ *p++) & 0xFF] ^ (crc0 >> 8);
+
+		return crc0 ^ ~0U;
+#endif
+
+
+	static unsigned long crc32String(const std::string& data)
+	{
+		return crc32String(data.c_str(), data.size());
+	}
+
+	static unsigned long crc32String(const char* data)
+	{
+		return crc32String(data, strlen(data));
+	}
 
 	static std::string readFromFile(std::string filename)
 	{
@@ -25,26 +97,7 @@ namespace tools
 	#define UTF8_ACCEPT 0
 	#define UTF8_REJECT 12
 
-	static const unsigned char utf8d[] = {
-		// The first part of the table maps bytes to character classes that
-		// to reduce the size of the transition table and create bitmasks.
-		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-		1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
-		7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
-		8, 8, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-		10, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 3, 3, 11, 6, 6, 6, 5, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
-
-		// The second part is a transition table that maps a combination
-		// of a state of the automaton and a character class to a state.
-		0, 12, 24, 36, 60, 96, 84, 12, 12, 12, 48, 72, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12,
-		12, 0, 12, 12, 12, 12, 12, 0, 12, 0, 12, 12, 12, 24, 12, 12, 12, 12, 12, 24, 12, 24, 12, 12,
-		12, 12, 12, 12, 12, 12, 12, 24, 12, 12, 12, 12, 12, 24, 12, 12, 12, 12, 12, 12, 12, 24, 12, 12,
-		12, 12, 12, 12, 12, 12, 12, 36, 12, 36, 12, 12, 12, 36, 12, 12, 12, 12, 12, 36, 12, 36, 12, 12,
-		12, 36, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12,
-	};
+	extern const unsigned char utf8d[];
 
 	static unsigned int
 	decode_utf8(unsigned int& state, unsigned int& codep, unsigned int byte)
