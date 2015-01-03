@@ -255,7 +255,12 @@ Token Tokenizer::PeekNextToken(int& offset)
 	return token;
 }
 
-__declspec(thread) std::map<unsigned long, Token::Type> *gTokenTypes=0;
+#ifdef _MSC_VER
+#define threadlocal __declspec(thread)
+#else
+#define threadlocal __thread
+#endif
+threadlocal std::map<unsigned long, Token::Type> *gTokenTypes=0;
 void PopulateTokenTypes()
 {
 	gTokenTypes = new std::map<unsigned long, Token::Type>();
