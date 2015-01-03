@@ -237,7 +237,7 @@ Token Tokenizer::PeekNextToken(int& offset)
 	else if (token.TokenData.at(0) == static_cast<char>(0xEF))
 	{
 		// 0xEF, 0xBB, 0xBF
-		char bomContinuation[] = { 0xBB, 0xBF, 0 };
+		char bomContinuation[] = { static_cast<char>(0xBB), static_cast<char>(0xBF), 0 };
 		std::string next = PeekBytes(2, offset);
 		if (next == bomContinuation)
 		{
