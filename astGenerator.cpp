@@ -933,13 +933,12 @@ bool ASTParser::ParseDeclaration(ASTNode* parent, ASTPosition& cposition)
 			headType->AddNode(nd);
 		else
 			headType->m_children[lastSubID]->AddNode(nd);
-		
 	}
 	else if (position.GetToken().TokenType == Token::Type::Semicolon)
 		position.Increment();
 	else
 		return false;
-	
+
 	// push to list
 	headType->type = "DCL_HEAD";
 	parent->AddNode(headType.release());
@@ -997,7 +996,7 @@ bool ASTParser::ParseOperatorType(ASTNode* parent, ASTPosition& cposition, std::
 	{
 		tokens.push_back(position.GetTokenIndex());
 		position.Increment();
-		
+
 		if (position.GetToken().TokenType == Token::Type::RParen)
 		{
 			tokens.push_back(position.GetTokenIndex());
@@ -1154,7 +1153,7 @@ bool ASTParser::ParseNTypeSinglePointersAndReferences(ASTPosition &cposition, AS
 	// parse succeeded
 	cposition = position;
 	ptrData.pointerToken = ptrToken;
-	
+
 	if (fp)
 		typeNode->typeFunctionPointerPointers.push_back(ptrData);
 	else
@@ -1229,8 +1228,6 @@ bool ASTParser::ParseNTypeFunctionPointer(ASTPosition &cposition, ASTType* typeN
 
 bool ASTParser::ParseNTypeIdentifier(ASTPosition &cposition, ASTType* typeNode)
 {
-	
-
 	ASTPosition position = cposition;
 	std::vector<ASTTokenIndex> tokenIdent;
 
@@ -1245,7 +1242,6 @@ bool ASTParser::ParseNTypeIdentifier(ASTPosition &cposition, ASTType* typeNode)
 			position.Increment();
 		}
 
-		
 		// support destructors & operators
 		if (position.GetToken().TokenType == Token::Type::Operator)
 		{
@@ -1334,7 +1330,7 @@ std::string ASTPointerType::ToString()
 	std::string ret;
 	if (pointerType == Type::Pointer)
 		ret = "*";
-	else 
+	else
 		ret = "&";
 	for (auto& it : pointerModifiers)
 		ret += " " + it.TokenData;
@@ -1361,7 +1357,7 @@ std::string ASTType::ToString()
 	}
 
 	if (typeArrayTokens.size() > 0) ret += " ";
-	
+
 	for (auto& it : typeIdentifier)
 		ret += tokenSource->Tokens[it].TokenData;
 
@@ -1371,13 +1367,10 @@ std::string ASTType::ToString()
 		ret += tokenSource->Tokens[it].TokenData;
 
 	if (typeOperatorTokens.size() > 0) ret += " ";
-		
 
-		
 	// remove trailing space
 	if (ret.size() > 0 && ret.back() == ' ')
 		ret.pop_back();
-		
 
 	return ret;
 
