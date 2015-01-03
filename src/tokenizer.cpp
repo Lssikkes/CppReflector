@@ -362,7 +362,7 @@ Tokenizer::Data StringTokenizer::PeekBytes(int numBytes, int offset)
 	}
 	else
 	{
-		Data dt = { Source.c_str() + noffset, numBytes};
+		Data dt = { Source.c_str() + noffset, (size_t)numBytes};
 		return dt;
 	}
 }
