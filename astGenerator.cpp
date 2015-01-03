@@ -1740,6 +1740,13 @@ std::string ASTType::ToString()
 		for (auto& it : children)
 		{
 			ASTType* t = dynamic_cast<ASTType*>(it);
+			if (t == 0)
+			{
+				if (it->GetType() == "DCL_VARARGS")
+					ret += "...";
+				continue; // skip non-types
+			}
+
 			ret += t->ToString();
 			if (it != children.back())
 				ret += ", ";
