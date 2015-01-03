@@ -296,6 +296,14 @@ bool ASTParser::ParseClass(ASTNode* parent, ASTPosition& cposition)
 			if (Verbose)
 				fprintf(stderr, "[PARSER] discarding unknown scope in class/struct: %s", CombineTokens(this, tokens, "").c_str());
 		}
+		else if (position.GetToken().TokenType == Token::Type::EndOfStream)
+		{
+		
+			if (Verbose)
+				fprintf(stderr, "[PARSER] end of stream reached during class parse - something is wrong\n");
+			break;
+		}
+			
 		else
 		{
 			
@@ -767,10 +775,19 @@ bool ASTParser::ParseClassInheritance(int &inheritancePublicPrivateProtected, AS
 		position.Increment();
 	}
 	
-	if (position.GetToken().TokenType != Token::Type::Keyword)
+	if (position.GetToken().TokenType != Token::Type::Keyword && position.GetToken().TokenType != Token::Type::Doublecolon)
 		return false;
 	
-	ASTNode* subNode = new ASTNode();
+
+	// parse class/struct/union name (including namespaces)
+	std::unique_ptr<ASTNode> subNode(new ASTNode());
+	std::unique_ptr<ASTType> subType(new ASTType(this));
+	if (ParseDeclarationHead(subNode.get(), position, subType.get()) == false)
+		return false;
+	subType->type = "DCL_INHERIT";
+	subNode->AddNode(subType.release());
+
+	// create subnode
 	subNode->type = "INHERIT";
 	if(inheritancePublicPrivateProtected == 0)
 		subNode->data.push_back("public");
@@ -779,9 +796,8 @@ bool ASTParser::ParseClassInheritance(int &inheritancePublicPrivateProtected, AS
 	else if(inheritancePublicPrivateProtected == 2)
 		subNode->data.push_back("protected");
 
-	subNode->data.push_back(position.GetToken().TokenData);
-	parent->AddNode(subNode);
-	position.Increment();
+
+	parent->AddNode(subNode.release());
 	cposition = position;
 	return true;
 }
