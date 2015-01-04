@@ -265,6 +265,8 @@ void PopulateTokenTypes()
 {
 	gTokenTypes = new std::map<unsigned long, Token::Type>();
 	std::map<unsigned long, Token::Type> &grTokenTypes = *gTokenTypes;
+	grTokenTypes[tools::crc32String("true")] = Token::Type::True;
+	grTokenTypes[tools::crc32String("false")] = Token::Type::False;
 	grTokenTypes[tools::crc32String("public")] = Token::Type::Public;
 	grTokenTypes[tools::crc32String("protected")] = Token::Type::Protected;
 	grTokenTypes[tools::crc32String("private")] = Token::Type::Private;

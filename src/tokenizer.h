@@ -44,6 +44,8 @@ struct Token
 		Minus, // -
 		Keyword, // [a-zA-Z][a-zA-Z0-9_-]*
 		Number, // [0-9][.0-9]*[f]?
+		True,	// true
+		False, // false
 		Class, // class
 		Struct, // struct
 		Union, // union
