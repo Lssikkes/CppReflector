@@ -276,6 +276,8 @@ void PopulateTokenTypes()
 	grTokenTypes[tools::crc32String("signed")] = Token::Type::Signed;
 	grTokenTypes[tools::crc32String("null")] = Token::Type::Null;
 	grTokenTypes[tools::crc32String("void")] = Token::Type::Void;
+	grTokenTypes[tools::crc32String("__int64")] = Token::Type::BuiltinType;
+	grTokenTypes[tools::crc32String("bool")] = Token::Type::BuiltinType;
 	grTokenTypes[tools::crc32String("int")] = Token::Type::BuiltinType;
 	grTokenTypes[tools::crc32String("short")] = Token::Type::BuiltinType;
 	grTokenTypes[tools::crc32String("long")] = Token::Type::BuiltinType;
