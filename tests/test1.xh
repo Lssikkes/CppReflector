@@ -527,7 +527,7 @@ namespace HardCases
  
 		// complicated non-type example
 
-		// too complicated right now: no support for pointer to member objects, and the parser chokes on int (&ra)[5]
+		// too complicated right now: no support for pointer to member objects
 		/*template <
 			char c, // integral type
 			int (&ra)[5], // lvalue reference to object (of array type)

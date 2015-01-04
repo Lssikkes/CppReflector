@@ -303,12 +303,15 @@ void PopulateTokenTypes()
 	grTokenTypes[tools::crc32String("friend")] = Token::Type::Friend;
 	grTokenTypes[tools::crc32String("__forceinline")] = Token::Type::MSVCForceInline;
 	grTokenTypes[tools::crc32String("restrict")] = Token::Type::Restrict;
+	grTokenTypes[tools::crc32String("__thread")] = Token::Type::Thread;
 	grTokenTypes[tools::crc32String("__inline")] = Token::Type::Inline;
+	grTokenTypes[tools::crc32String("__asm__")] = Token::Type::GCCAssembly;
 	grTokenTypes[tools::crc32String("__declspec")] = Token::Type::MSVCDeclspec;
 	grTokenTypes[tools::crc32String("__attribute__")] = Token::Type::GCCAttribute;
 	grTokenTypes[tools::crc32String("__restrict")] = Token::Type::MSVCRestrict;
 	grTokenTypes[tools::crc32String("__restrict__")] = Token::Type::GCCRestrict;
 	grTokenTypes[tools::crc32String("__extension__")] = Token::Type::GCCExtension;
+	grTokenTypes[tools::crc32String("throw")] = Token::Type::Throw;
 
 }
 

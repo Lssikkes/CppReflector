@@ -73,7 +73,7 @@ protected:
 	bool ParseConstructorArguments(ASTNode* argNode, ASTPosition &position);
 
 	bool ParseModifierToken(ASTPosition& position, std::vector<std::pair<ASTTokenIndex, ASTTokenIndex>>& modifierTokens);
-	bool ParseMSVCDeclspecOrGCCAttribute(ASTPosition &position, std::pair<ASTTokenIndex, ASTTokenIndex>& outTokenStream);
+	bool ParseArgumentAttribute(ASTPosition &position, std::pair<ASTTokenIndex, ASTTokenIndex>& outTokenStream);
 
 	bool ParseClassConstructorDestructor(ASTNode* parent, ASTPosition &position);
 	bool ParsePointerReferenceSymbol(ASTPosition &position, std::vector<Token> &pointerTokens, std::vector<Token> &pointerModifierTokens );

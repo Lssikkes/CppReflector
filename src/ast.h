@@ -76,12 +76,14 @@ public:
 	virtual std::string ToString();
 };
 
+//@[Serializable]
 class ASTType : public ASTNode
 {
 public:
 	ASTType(ASTTokenSource* src) : tokenSource(src) { type = "TYPE"; }
 	ASTTokenSource* tokenSource;
 	ASTType* head = 0;
+	
 	ASTNode* ndTemplateArgumentList = 0;
 	ASTNode* ndFuncArgumentList = 0;
 	ASTNode* ndFuncModifierList = 0;
@@ -90,6 +92,7 @@ public:
 	std::vector<ASTTokenIndex> typeIdentifier;
 	std::vector<std::pair<ASTTokenIndex, ASTTokenIndex> > typeModifiers;
 	std::vector<ASTTokenIndex> typeOperatorTokens;
+	std::vector<ASTTokenIndex> typeBitfieldTokens;
 	std::vector<ASTPointerType> typePointers;
 	std::vector<ASTPointerType> typeIdentifierScopedPointers;
 	std::vector<std::vector<ASTTokenIndex>> typeArrayTokens;

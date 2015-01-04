@@ -12,7 +12,6 @@
 #include "ast.h"
 #include "astParser.h"
 
-// TODO: bit fields
 // TODO: pointer to member objects
 
 int main(int argc, char** argv)

@@ -183,13 +183,13 @@ bool ASTParser::ParseClass(ASTNode* parent, ASTPosition& cposition)
 
 	// TODO: do something with this declspec (class/union/struct modifier)
 	std::pair<ASTTokenIndex, ASTTokenIndex> declspecGcc;
-	ParseMSVCDeclspecOrGCCAttribute(position, declspecGcc);
+	ParseArgumentAttribute(position, declspecGcc);
 
 	if (position.GetToken().TokenType != Token::Type::Class && position.GetToken().TokenType != Token::Type::Struct  && position.GetToken().TokenType != Token::Type::Union)
 		return false;
 
 	// TODO: do something with this declspec (keyword modifier)
-	ParseMSVCDeclspecOrGCCAttribute(position, declspecGcc);
+	ParseArgumentAttribute(position, declspecGcc);
 
 	int privatePublicProtected = 0;
 	if (position.GetToken().TokenType == Token::Type::Struct || position.GetToken().TokenType == Token::Type::Union )
@@ -352,7 +352,7 @@ bool ASTParser::ParseClass(ASTNode* parent, ASTPosition& cposition)
 
 	// parse final MSVC/GCC modifiers
 	// TODO: do something with this declspec (class/union/struct modifier)
-	ParseMSVCDeclspecOrGCCAttribute(position, declspecGcc);
+	ParseArgumentAttribute(position, declspecGcc);
 
 	if (position.GetToken().TokenType != Token::Type::Semicolon)
 		throw std::runtime_error("expected semicolon to terminate class definition");
@@ -946,6 +946,8 @@ bool ASTParser::ParseDeclarationSub(ASTNode* parent, ASTPosition& cposition, AST
 	// parse pointers/references & pointer modifiers
 	ParseNTypePointersAndReferences(position, type, false);
 
+	bool parsedArguments = false;
+
 	if (ParseNTypeFunctionPointer(position, type))
 	{
 		// function pointer parsed, parse function pointer arguments
@@ -957,6 +959,7 @@ bool ASTParser::ParseDeclarationSub(ASTNode* parent, ASTPosition& cposition, AST
 			argNode->type = "DCL_FPTR_ARGS";
 			type->ndFuncPointerArgumentList = argNode.get();
 			type->AddNode(argNode.release());
+			parsedArguments = true;
 
 		}
 		else
@@ -974,6 +977,7 @@ bool ASTParser::ParseDeclarationSub(ASTNode* parent, ASTPosition& cposition, AST
 		// parse array tokens if present
 		ParseNTypeArrayDefinitions(position, type);
 	}
+
 
 	// parse function arguments if present
 	if (position.GetToken().TokenType == Token::Type::LParen)
@@ -998,34 +1002,55 @@ bool ASTParser::ParseDeclarationSub(ASTNode* parent, ASTPosition& cposition, AST
 			
 		type->AddNode(argNode.release());
 
+		parsedArguments = true;
+
+	}
+
+	// parse bitfield if allowed
+	if (opts.AllowBitfield && position.GetToken().TokenType == Token::Type::Colon && parsedArguments == false)
+	{
+		position.Increment(); // skip Colon
+
+		// parse 
+		Parse_ScopeAware(position,
+			[](ASTPosition& pos) { return pos.GetToken().TokenType != Token::Type::Comma &&  pos.GetToken().TokenType != Token::Type::Semicolon;  },
+			[type](ASTPosition& pos) { type->typeBitfieldTokens.push_back(pos.GetTokenIndex()); },
+			&ASTPosition::FilterWhitespaceComments);
+
+	}
+
+	if (parsedArguments)
+	{
 		// parse function modifiers if present
 		std::vector<std::pair<ASTTokenIndex, ASTTokenIndex> > funcModifiers;
 		while (ParseModifierToken(position, funcModifiers)) {}
 
 		if (funcModifiers.size() > 0)
 		{
-			std::unique_ptr<ASTNode> funcModifier(new ASTNode());
-			funcModifier->type = "DCL_FUNC_MOD";
-			type->ndFuncModifierList = funcModifier.get();
+			std::unique_ptr<ASTNode> funcModifierList(new ASTNode());
+			funcModifierList->type = "DCL_FUNC_MODS";
+			type->ndFuncModifierList = funcModifierList.get();
 
 			// fill modifier data
 			for (int i = 0; i < funcModifiers.size(); i++)
 			{
+				std::unique_ptr<ASTTokenNode> funcModifier(new ASTTokenNode(this));
+				funcModifier->type = "MODIFIER";
+
 				std::string modifierData;
 				for (int j = funcModifiers[i].first; j <= funcModifiers[i].second; j++)
 				{
 					if (ASTPosition::FilterWhitespaceComments(Tokens[j]) == false) // dont include whitespace and comments
 						continue;
-					modifierData += Tokens[j].TokenData;
+					funcModifier->Tokens.push_back(j);
 				}
-
-				funcModifier->AddData(modifierData);
+				
+				funcModifierList->AddNode(funcModifier.release());
 			}
 
-			type->AddNode(funcModifier.release());
+			type->AddNode(funcModifierList.release());
 
 		}
-
 	}
 
 	// parse assignment
@@ -1289,46 +1314,41 @@ bool ASTParser::ParseOperatorType(ASTNode* parent, ASTPosition& cposition, std::
 bool ASTParser::ParseModifierToken(ASTPosition& cposition, std::vector<std::pair<ASTTokenIndex, ASTTokenIndex>>& modifierTokens)
 {
 	ASTPosition position = cposition;
-	if (position.GetToken().TokenType == Token::Type::Const)
+	switch (position.GetToken().TokenType)
+	{
+	case Token::Type::Const:
+	case Token::Type::Inline:
+	case Token::Type::Extern:
+	case Token::Type::Virtual:
+	case Token::Type::Volatile:
+	case Token::Type::Unsigned:
+	case Token::Type::Signed:
+	
+	case Token::Type::Static:
+	case Token::Type::Mutable:
+	case Token::Type::Class:
+	case Token::Type::Struct:
+	case Token::Type::Union:
+	case Token::Type::Thread:
+	case Token::Type::GCCExtension:
+	case Token::Type::MSVCForceInline:
 		modifierTokens.push_back(std::make_pair(position.GetTokenIndex(), position.GetTokenIndex()));
-	else if (position.GetToken().TokenType == Token::Type::Inline)
-		modifierTokens.push_back(std::make_pair(position.GetTokenIndex(), position.GetTokenIndex()));
-	else if (position.GetToken().TokenType == Token::Type::Extern)
-		modifierTokens.push_back(std::make_pair(position.GetTokenIndex(), position.GetTokenIndex()));
-	else if (position.GetToken().TokenType == Token::Type::Virtual)
-		modifierTokens.push_back(std::make_pair(position.GetTokenIndex(), position.GetTokenIndex()));
-	else if (position.GetToken().TokenType == Token::Type::Volatile)
-		modifierTokens.push_back(std::make_pair(position.GetTokenIndex(), position.GetTokenIndex()));
-	else if (position.GetToken().TokenType == Token::Type::Unsigned)
-		modifierTokens.push_back(std::make_pair(position.GetTokenIndex(), position.GetTokenIndex()));
-	else if (position.GetToken().TokenType == Token::Type::Signed)
-		modifierTokens.push_back(std::make_pair(position.GetTokenIndex(), position.GetTokenIndex()));
-	else if (position.GetToken().TokenType == Token::Type::Static)
-		modifierTokens.push_back(std::make_pair(position.GetTokenIndex(), position.GetTokenIndex()));
-	else if (position.GetToken().TokenType == Token::Type::Mutable)
-		modifierTokens.push_back(std::make_pair(position.GetTokenIndex(), position.GetTokenIndex()));
-	else if (position.GetToken().TokenType == Token::Type::Class)
-		modifierTokens.push_back(std::make_pair(position.GetTokenIndex(), position.GetTokenIndex()));
-	else if (position.GetToken().TokenType == Token::Type::Struct)
-		modifierTokens.push_back(std::make_pair(position.GetTokenIndex(), position.GetTokenIndex()));
-	else if (position.GetToken().TokenType == Token::Type::Union)
-		modifierTokens.push_back(std::make_pair(position.GetTokenIndex(), position.GetTokenIndex()));
-	else if (position.GetToken().TokenType == Token::Type::GCCExtension)
-		modifierTokens.push_back(std::make_pair(position.GetTokenIndex(), position.GetTokenIndex()));
-	else if (position.GetToken().TokenType == Token::Type::MSVCForceInline)
-		modifierTokens.push_back(std::make_pair(position.GetTokenIndex(), position.GetTokenIndex()));
-	else if (position.GetToken().TokenType == Token::Type::MSVCDeclspec || position.GetToken().TokenType == Token::Type::GCCAttribute)
+		break;
+	case Token::Type::MSVCDeclspec:
+	case Token::Type::GCCAttribute:
+	case Token::Type::Throw:
 	{
 		std::pair<ASTTokenIndex, ASTTokenIndex> declspecTokens;
-		if (ParseMSVCDeclspecOrGCCAttribute(position, declspecTokens) == false)
+		if (ParseArgumentAttribute(position, declspecTokens) == false)
 			return false;
 		modifierTokens.push_back(declspecTokens);
 		cposition = position;
 		return true;
 	}
-		
-	else
+	default:
 		return false;
+	}
+
 
 	position.Increment();
 	cposition = position;
@@ -1679,10 +1699,13 @@ bool ASTParser::ParseDeclarationSubArgumentsScopedWithNonTypes(ASTPosition &cpos
 	return true;
 }
 
-bool ASTParser::ParseMSVCDeclspecOrGCCAttribute(ASTPosition &position, std::pair<ASTTokenIndex, ASTTokenIndex>& outTokenStream)
+bool ASTParser::ParseArgumentAttribute(ASTPosition &position, std::pair<ASTTokenIndex, ASTTokenIndex>& outTokenStream)
 {
 	ASTTokenIndex idxStart = position.GetTokenIndex();
-	if (position.GetToken().TokenType != Token::Type::GCCAttribute && position.GetToken().TokenType != Token::Type::MSVCDeclspec)
+	if (position.GetToken().TokenType != Token::Type::GCCAttribute 
+		&& position.GetToken().TokenType != Token::Type::MSVCDeclspec
+		&& position.GetToken().TokenType != Token::Type::GCCAssembly
+		&& position.GetToken().TokenType != Token::Type::Throw)
 		return false;
 
 	position.Increment();

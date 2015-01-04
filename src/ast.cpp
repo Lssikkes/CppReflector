@@ -53,8 +53,24 @@ std::string ASTType::ToString()
 	if (typeName.size() > 0 && tokenSource->Tokens[typeName[0]].TokenType != Token::Type::BuiltinType && tokenSource->Tokens[typeName[0]].TokenType != Token::Type::Void) ret += "::";
 
 	// name symbols
-	for (auto& it : typeName)
-		ret += tokenSource->Tokens[it].TokenData + "";
+	for (int i = 0; i < typeName.size(); i++)
+	{
+		Token* nextToken = 0;
+		if (i + 1 < typeName.size())
+			nextToken = &tokenSource->Tokens[typeName[i + 1]];
+
+		ret += tokenSource->Tokens[typeName[i]].TokenData;
+		if (tokenSource->Tokens[typeName[i]].TokenType != Token::Type::Doublecolon)
+		{
+			if (nextToken && nextToken->TokenType == Token::Type::Keyword)
+				ret.push_back(' ');
+			else if (nextToken && nextToken->TokenType == Token::Type::BuiltinType)
+				ret.push_back(' ');
+			else if (nextToken && nextToken->TokenType == Token::Type::Void)
+				ret.push_back(' ');
+
+		}
+	}
 	if (typeName.empty() == false) ret += " ";
 
 	// template arguments
@@ -67,7 +83,6 @@ std::string ASTType::ToString()
 		ret += "<";
 		for (auto& it : children)
 		{
-
 			ret += it->ToString();
 			if (it != children.back())
 				ret += ", ";
@@ -105,6 +120,12 @@ std::string ASTType::ToString()
 	if (!typeIdentifierScopedPointers.empty())
 		ret += ")";
 	else if (typeIdentifier.size() > 0) ret += " ";
+
+	// bitfield
+	if (typeBitfieldTokens.size() > 0)
+		ret += ": ";
+	for (auto& it : typeBitfieldTokens)
+		ret += tokenSource->Tokens[it].TokenData + " ";
 
 	// operator
 	for (auto& it : typeOperatorTokens)
@@ -158,6 +179,7 @@ void ASTType::MergeData(ASTType* other)
 	typePointers.insert(typePointers.end(), other->typePointers.begin(), other->typePointers.end());
 	typeArrayTokens.insert(typeArrayTokens.end(), other->typeArrayTokens.begin(), other->typeArrayTokens.end());
 	typeTemplateIndices.insert(typeTemplateIndices.end(), other->typeTemplateIndices.begin(), other->typeTemplateIndices.end());
+	typeBitfieldTokens.insert(typeBitfieldTokens.end(), other->typeBitfieldTokens.begin(), other->typeBitfieldTokens.end());
 	typeIdentifierScopedPointers.insert(typeIdentifierScopedPointers.end(), other->typeIdentifierScopedPointers.begin(), other->typeIdentifierScopedPointers.end());
 	typeFunctionPointerArgumentIndices.insert(typeFunctionPointerArgumentIndices.end(), other->typeFunctionPointerArgumentIndices.begin(), other->typeFunctionPointerArgumentIndices.end());
 

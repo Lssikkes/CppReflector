@@ -68,12 +68,15 @@ struct Token
 		Template, // template
 		Typename, // typename
 		Typedef, // typedef
+		Throw, // throw
 		Namespace, // namespace
 		Using, // using
+		Thread, // __thread
 		MSVCForceInline, // __forceinline
 		GCCAttribute, // __attribute__
 		MSVCRestrict, // __restrict
 		GCCRestrict, // __restrict__
+		GCCAssembly, // __asm__
 		GCCExtension, // __extension__
 		MSVCDeclspec, // __declspec
 		Friend, // friend
