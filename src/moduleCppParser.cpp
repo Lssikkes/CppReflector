@@ -17,7 +17,6 @@ public:
 		fprintf(stderr, "********************* CPP PARSER (%s) ***********************\n", Multithreaded ? "MT" : "ST");
 
 		std::mutex lkSuperRoot;
-		
 
 		// parse files
 		if (Multithreaded)
@@ -39,6 +38,7 @@ public:
 
 	void ParseFile(tools::CommandLineParser &opts, size_t i, std::vector<std::unique_ptr<ASTParser>> &parsers, std::mutex &lkSuperRoot, ASTNode* rootNode)
 	{
+		fprintf(stderr, "[PARSER] Parsing file \"%s\"\n", opts.names[i].c_str());
 		StringTokenizer stokenizer(tools::readFromFile(opts.names[i]));
 		std::unique_ptr<ASTParser> parser(new ASTParser(stokenizer));
 
