@@ -1,0 +1,626 @@
+class ScrollHandler: public renderer::CWindowEventHandler
+{
+public:
+	virtual bool OnMouseDown(renderer::WM_MouseButton btn, int x, int y)
+	{
+		if(btn == renderer::WMBTN_SCROLLUP) 
+			scrollUp = rnd->GetFrameNumber()+1;
+		if(btn ==  renderer::WMBTN_SCROLLDOWN) 
+			scrollDown = rnd->GetFrameNumber()+1;
+		return false;
+	}
+	renderer::CRenderer* rnd;
+	uint64_t scrollUp;
+	uint64_t scrollDown;
+};
+
+#include "managers_input.h"
+#include "ps3renderer.h"
+#include "XBoxController.h"
+
+
+//[[ BASE CONTROLLER ]]
+CInputController_Base::CInputController_Base( renderer::CRenderer* rnd ):
+	m_renderer(rnd)
+	,m_muted(false)
+{
+
+}
+
+CInputController_Base::~CInputController_Base()
+{
+}
+
+bool CInputController_Base::GetButtonPressed( const CInputList& inputs )
+{
+	if(m_muted)
+		return false;
+
+	bool retVal = false;
+	for(int i=0; i<inputs.numInputs; i++)
+	{
+		if(IsValidInput(inputs.inputs[i]) == false)
+			continue;
+
+		if(IsValidButtonInput(inputs.inputs[i]))
+			retVal = retVal || i_GetButtonPressed(inputs.inputs[i]);
+		if(IsValidPositiveAxisInput(inputs.inputs[i]))
+			retVal = retVal || (i_GetAxis(inputs.inputs[i]) > 0.5f);
+		if(IsValidPositiveNegativeAxisInput(inputs.inputs[i]))
+			retVal = retVal || (i_GetAxis(inputs.inputs[i]) > 0.5f) || (i_GetAxis(inputs.inputs[i]) < -0.5f);
+	}
+
+	return retVal;
+}
+
+bool CInputController_Base::GetButtonPressedOnce( const CInputList& inputs )
+{
+	if(m_muted)
+		return false;
+
+	bool retVal = false;
+	for(int i=0; i<inputs.numInputs; i++)
+	{
+		if(IsValidInput(inputs.inputs[i]) == false)
+			continue;
+
+		bool currentlyPressed=false;
+		if(IsValidButtonInput(inputs.inputs[i]))
+			currentlyPressed = currentlyPressed || i_GetButtonPressed(inputs.inputs[i]);
+		if(IsValidPositiveAxisInput(inputs.inputs[i]))
+			currentlyPressed = currentlyPressed || (i_GetAxis(inputs.inputs[i]) > 0.5f);
+		if(IsValidPositiveNegativeAxisInput(inputs.inputs[i]))
+			currentlyPressed = currentlyPressed || (i_GetAxis(inputs.inputs[i]) > 0.5f) || (i_GetAxis(inputs.inputs[i]) < -0.5f);
+
+		// was button pressed last frame?
+		bool wasPressed=false;
+		if(m_pressed.find(inputs.inputs[i]) != m_pressed.end())
+		{
+			if(m_pressed[inputs.inputs[i]] != m_renderer->GetFrameNumber())
+				wasPressed = true;
+		}
+
+		if(wasPressed == false && currentlyPressed == true)
+		{
+			// first time we've seen this button pressed
+			retVal = true;
+			m_pressed[inputs.inputs[i]] = m_renderer->GetFrameNumber();
+		}
+		if(wasPressed == true && currentlyPressed == false)
+		{
+			// button is not pressed anymore, reset state
+			m_pressed.erase(inputs.inputs[i]);
+		}
+	}
+
+	return retVal;
+}
+
+float CInputController_Base::GetPositiveNegativeAxis( const CInputList& inputs )
+{
+	if(m_muted)
+		return 0.0f;
+
+	float retVal = 0.0f;
+	input_t primary=INPUT_NULL;
+	bool primaryIsButton=true;
+	for(int i=0; i<inputs.numInputs; i++)
+	{
+		if(IsValidInput(inputs.inputs[i]) == false)
+			continue;
+		
+		if(IsValidButtonInput(inputs.inputs[i]) && primary == INPUT_NULL)
+		{
+			primary = inputs.inputs[i];
+			primaryIsButton = true;
+		}
+		else if(IsValidPositiveAxisInput(inputs.inputs[i]) && primary == INPUT_NULL)
+		{
+			primary = inputs.inputs[i];
+			primaryIsButton = false;
+		}
+		else if(IsValidButtonInput(inputs.inputs[i]) && primary != INPUT_NULL)
+		{
+			if(primaryIsButton)
+			{
+				if(i_GetButtonPressed(primary))
+					retVal += 1.0f;
+			}
+			else
+				retVal += i_GetAxis(primary);
+
+			if(i_GetButtonPressed(inputs.inputs[i]))
+				retVal += -1.0f;
+
+			break;
+		}
+		else if(IsValidPositiveAxisInput(inputs.inputs[i]) && primary != INPUT_NULL)
+		{
+			if(primaryIsButton)
+			{
+				if(i_GetButtonPressed(primary))
+					retVal += 1.0f;
+			}
+			else
+				retVal += i_GetAxis(primary);
+
+			retVal += -i_GetAxis(inputs.inputs[i]);
+
+			break;
+		}
+		else if(IsValidPositiveNegativeAxisInput(inputs.inputs[i]))
+		{
+			retVal = i_GetAxis(inputs.inputs[i]);
+
+			break;
+		}
+	}
+
+	return retVal;
+}
+
+float CInputController_Base::GetPositiveAxis( const CInputList& inputs )
+{
+	if(m_muted)
+		return 0.0f;
+
+	for(int i=0; i<inputs.numInputs; i++)
+	{
+		if(IsValidInput(inputs.inputs[i]) == false)
+			continue;
+
+		if(IsValidButtonInput(inputs.inputs[i]) && i_GetButtonPressed(inputs.inputs[i]))
+			return 1.0f;
+		if(IsValidPositiveAxisInput(inputs.inputs[i]))
+			return i_GetAxis(inputs.inputs[i]);
+		if(IsValidPositiveNegativeAxisInput(inputs.inputs[i]))
+			return fabsf(i_GetAxis(inputs.inputs[i]));
+	}
+
+	return 0.0f;
+}
+
+//[[ KEYBOARD CONTROLLER ]]
+CInputController_Keyboard::CInputController_Keyboard( renderer::CRenderer* _rnd ):
+	CInputController_Base(_rnd), m_wnd(&_rnd->GetWindow())
+{
+
+}
+
+bool CInputController_Keyboard::i_GetButtonPressed( input_t input )
+{
+	if(IsValidButtonInput(input))
+	{
+		return m_wnd->IsKeyDown((unsigned short)(input-INPUT_KEYBOARD_OFFSET));
+	}
+
+	return false;
+}
+
+float CInputController_Keyboard::i_GetAxis( input_t input )
+{
+	return 0.0f;
+}
+
+bool CInputController_Keyboard::IsValidInput( input_t input )
+{
+	return (input >= INPUT_KEYBOARD_OFFSET && input < INPUT_KEYBOARD_COUNT);
+}
+
+bool CInputController_Keyboard::IsValidButtonInput( input_t input )
+{
+	return (input >= INPUT_KEYBOARD_OFFSET && input < INPUT_KEYBOARD_COUNT);
+}
+
+static enum_input_t keyboardEnums[] = 
+{	
+	{ INPUT_KEYBOARD_A, "KEYBOARD_A" },
+	{ INPUT_KEYBOARD_B, "KEYBOARD_B" },
+	{ INPUT_KEYBOARD_C, "KEYBOARD_C" },
+	{ INPUT_KEYBOARD_D, "KEYBOARD_D" },
+	{ INPUT_KEYBOARD_E, "KEYBOARD_E" },
+	{ INPUT_KEYBOARD_F, "KEYBOARD_F" },
+	{ INPUT_KEYBOARD_G, "KEYBOARD_G" },
+	{ INPUT_KEYBOARD_H, "KEYBOARD_H" },
+	{ INPUT_KEYBOARD_I, "KEYBOARD_I" },
+	{ INPUT_KEYBOARD_J, "KEYBOARD_J" },
+	{ INPUT_KEYBOARD_K, "KEYBOARD_K" },
+	{ INPUT_KEYBOARD_L, "KEYBOARD_L" },
+	{ INPUT_KEYBOARD_M, "KEYBOARD_M" },
+	{ INPUT_KEYBOARD_N, "KEYBOARD_N" },
+	{ INPUT_KEYBOARD_O, "KEYBOARD_O" },
+	{ INPUT_KEYBOARD_P, "KEYBOARD_P" },
+	{ INPUT_KEYBOARD_Q, "KEYBOARD_Q" },
+	{ INPUT_KEYBOARD_R, "KEYBOARD_R" },
+	{ INPUT_KEYBOARD_S, "KEYBOARD_S" },
+	{ INPUT_KEYBOARD_T, "KEYBOARD_T" },
+	{ INPUT_KEYBOARD_U, "KEYBOARD_U" },
+	{ INPUT_KEYBOARD_V, "KEYBOARD_V" },
+	{ INPUT_KEYBOARD_W, "KEYBOARD_W" },
+	{ INPUT_KEYBOARD_X, "KEYBOARD_X" },
+	{ INPUT_KEYBOARD_Y, "KEYBOARD_Y" },
+	{ INPUT_KEYBOARD_Z, "KEYBOARD_Z" },
+
+	{ INPUT_KEYBOARD_0, "KEYBOARD_0" },
+	{ INPUT_KEYBOARD_1, "KEYBOARD_1" },
+	{ INPUT_KEYBOARD_2, "KEYBOARD_2" },
+	{ INPUT_KEYBOARD_3, "KEYBOARD_3" },
+	{ INPUT_KEYBOARD_4, "KEYBOARD_4" },
+	{ INPUT_KEYBOARD_5, "KEYBOARD_5" },
+	{ INPUT_KEYBOARD_6, "KEYBOARD_6" },
+	{ INPUT_KEYBOARD_7, "KEYBOARD_7" },
+	{ INPUT_KEYBOARD_8, "KEYBOARD_8" },
+	{ INPUT_KEYBOARD_9, "KEYBOARD_9" },
+
+	{ INPUT_KEYBOARD_BRACKET_L, "KEYBOARD_BRACKET_L" },
+	{ INPUT_KEYBOARD_BRACKET_R, "KEYBOARD_BRACKET_R" },
+	{ INPUT_KEYBOARD_SEMICOLON, "KEYBOARD_SEMICOLON" },
+	{ INPUT_KEYBOARD_COMMA, "KEYBOARD_COMMA" },
+	{ INPUT_KEYBOARD_PERIOD, "KEYBOARD_PERIOD" },
+	{ INPUT_KEYBOARD_QUOTE, "KEYBOARD_QUOTE" },
+	{ INPUT_KEYBOARD_SLASH, "KEYBOARD_SLASH" },
+	{ INPUT_KEYBOARD_BACKSLASH, "KEYBOARD_BACKSLASH" },
+	{ INPUT_KEYBOARD_ACC_GRAVE, "KEYBOARD_ACC_GRAVE" },
+	{ INPUT_KEYBOARD_EQUAL, "KEYBOARD_EQUAL" },
+	{ INPUT_KEYBOARD_DASH, "KEYBOARD_DASH" },
+	{ INPUT_KEYBOARD_SPACE, "KEYBOARD_SPACE" },
+
+	{ INPUT_KEYBOARD_ESCAPE, "KEYBOARD_ESCAPE" },
+	{ INPUT_KEYBOARD_CTRL, "KEYBOARD_CTRL" },
+	{ INPUT_KEYBOARD_CTRL_L, "KEYBOARD_CTRL_L" },
+	{ INPUT_KEYBOARD_CTRL_R, "KEYBOARD_CTRL_R" },
+	{ INPUT_KEYBOARD_SHIFT, "KEYBOARD_SHIFT" },
+	{ INPUT_KEYBOARD_SHIFT_L, "KEYBOARD_SHIFT_L" },
+	{ INPUT_KEYBOARD_SHIFT_R, "KEYBOARD_SHIFT_R" },
+	{ INPUT_KEYBOARD_ALT, "KEYBOARD_ALT" },
+	{ INPUT_KEYBOARD_ALT_L, "KEYBOARD_ALT_L" },
+	{ INPUT_KEYBOARD_ALT_R, "KEYBOARD_ALT_R" },
+	{ INPUT_KEYBOARD_SYSTEM, "KEYBOARD_SYSTEM" },
+	{ INPUT_KEYBOARD_SYSTEM_L, "KEYBOARD_SYSTEM_L" },
+	{ INPUT_KEYBOARD_SYSTEM_R, "KEYBOARD_SYSTEM_R" },
+
+	{ INPUT_KEYBOARD_MENU, "KEYBOARD_MENU" },
+	{ INPUT_KEYBOARD_RETURN, "KEYBOARD_RETURN" },
+	{ INPUT_KEYBOARD_BACKSPACE, "KEYBOARD_BACKSPACE" },
+	{ INPUT_KEYBOARD_TAB, "KEYBOARD_TAB" },
+	{ INPUT_KEYBOARD_PAGE_UP, "KEYBOARD_PAGE_UP" },
+	{ INPUT_KEYBOARD_PAGE_DOWN, "KEYBOARD_PAGE_DOWN" },
+	{ INPUT_KEYBOARD_END, "KEYBOARD_END" },
+	{ INPUT_KEYBOARD_HOME, "KEYBOARD_HOME" },
+	{ INPUT_KEYBOARD_INSERT, "KEYBOARD_INSERT" },
+	{ INPUT_KEYBOARD_DELETE, "KEYBOARD_DELETE" },
+
+	{ INPUT_KEYBOARD_LEFT, "KEYBOARD_LEFT" },
+	{ INPUT_KEYBOARD_RIGHT, "KEYBOARD_RIGHT" },
+	{ INPUT_KEYBOARD_UP, "KEYBOARD_UP" },
+	{ INPUT_KEYBOARD_DOWN, "KEYBOARD_DOWN" },
+
+	{ INPUT_KEYBOARD_ADD, "KEYBOARD_ADD" },
+	{ INPUT_KEYBOARD_SUBTRACT, "KEYBOARD_SUBTRACT" },
+	{ INPUT_KEYBOARD_MULTIPLY, "KEYBOARD_MULTIPLY" },
+	{ INPUT_KEYBOARD_DIVIDE, "KEYBOARD_DIVIDE" },
+
+	{ INPUT_KEYBOARD_NUMPAD0, "KEYBOARD_NUMPAD0" },
+	{ INPUT_KEYBOARD_NUMPAD1, "KEYBOARD_NUMPAD1" },
+	{ INPUT_KEYBOARD_NUMPAD2, "KEYBOARD_NUMPAD2" },
+	{ INPUT_KEYBOARD_NUMPAD3, "KEYBOARD_NUMPAD3" },
+	{ INPUT_KEYBOARD_NUMPAD4, "KEYBOARD_NUMPAD4" },
+	{ INPUT_KEYBOARD_NUMPAD5, "KEYBOARD_NUMPAD5" },
+	{ INPUT_KEYBOARD_NUMPAD6, "KEYBOARD_NUMPAD6" },
+	{ INPUT_KEYBOARD_NUMPAD7, "KEYBOARD_NUMPAD7" },
+	{ INPUT_KEYBOARD_NUMPAD8, "KEYBOARD_NUMPAD8" },
+	{ INPUT_KEYBOARD_NUMPAD9, "KEYBOARD_NUMPAD9" },
+
+	{ INPUT_KEYBOARD_F1, "KEYBOARD_F1" },
+	{ INPUT_KEYBOARD_F2, "KEYBOARD_F2" },
+	{ INPUT_KEYBOARD_F3, "KEYBOARD_F3" },
+	{ INPUT_KEYBOARD_F4, "KEYBOARD_F4" },
+	{ INPUT_KEYBOARD_F5, "KEYBOARD_F5" },
+	{ INPUT_KEYBOARD_F6, "KEYBOARD_F6" },
+	{ INPUT_KEYBOARD_F7, "KEYBOARD_F7" },
+	{ INPUT_KEYBOARD_F8, "KEYBOARD_F8" },
+	{ INPUT_KEYBOARD_F9, "KEYBOARD_F9" },
+	{ INPUT_KEYBOARD_F10, "KEYBOARD_F10" },
+	{ INPUT_KEYBOARD_F11, "KEYBOARD_F11" },
+	{ INPUT_KEYBOARD_F12, "KEYBOARD_F12" },
+	{ INPUT_KEYBOARD_F13, "KEYBOARD_F13" },
+	{ INPUT_KEYBOARD_F14, "KEYBOARD_F14" },
+	{ INPUT_KEYBOARD_F15, "KEYBOARD_F15" },
+
+	{ INPUT_KEYBOARD_PAUSE, "KEYBOARD_PAUSE" },
+	{ INPUT_KEYBOARD_ANYKEY, "KEYBOARD_ANYKEY" },
+	{ INPUT_KEYBOARD_COUNT, "KEYBOARD_COUNT" } 
+};
+
+
+enum_input_t* CInputController_Keyboard::GetInputEnum()
+{
+	return keyboardEnums;
+}
+
+int CInputController_Keyboard::GetInputEnumCount()
+{
+	return sizeof(keyboardEnums)/sizeof(enum_input_t);
+}
+
+//[[ MOUSE CONTROLLER ]]
+
+
+CInputController_Mouse::CInputController_Mouse( renderer::CRenderer* _rnd, float sensitivity/*=5.0f*/ ): CInputController_Base(_rnd), m_wnd(&_rnd->GetWindow()), m_sensitivity(sensitivity), m_scrollhandler(c_new(ScrollHandler))
+{
+	m_scrollhandler->rnd = _rnd;
+	m_wnd->AddEventHandler(m_scrollhandler.Get());
+}
+
+bool CInputController_Mouse::i_GetButtonPressed( input_t input )
+{
+	switch(input)
+	{
+	case INPUT_MOUSE_BUTTON_LEFT: return m_wnd->IsMouseDown(renderer::WMBTN_LEFT);
+	case INPUT_MOUSE_BUTTON_RIGHT: return m_wnd->IsMouseDown(renderer::WMBTN_RIGHT);
+	case INPUT_MOUSE_BUTTON_MIDDLE: return m_wnd->IsMouseDown(renderer::WMBTN_MIDDLE);
+	case INPUT_MOUSE_BUTTON_SPECIAL0: return m_wnd->IsMouseDown(renderer::WMBTN_SPECIAL0);
+	case INPUT_MOUSE_BUTTON_SPECIAL1: return m_wnd->IsMouseDown(renderer::WMBTN_SPECIAL1);
+	case INPUT_MOUSE_BUTTON_SCROLLUP: return m_renderer->GetFrameNumber() == m_scrollhandler->scrollUp;
+	case INPUT_MOUSE_BUTTON_SCROLLDOWN: return m_renderer->GetFrameNumber() == m_scrollhandler->scrollDown;
+	}
+	return false;
+}
+
+float CInputController_Mouse::i_GetAxis( input_t input )
+{
+	switch(input)
+	{
+	case INPUT_MOUSE_AXIS_ABSOLUTEMOUSEX: return m_wnd->GetMouseX()/((float)m_wnd->GetWidth());
+	case INPUT_MOUSE_AXIS_ABSOLUTEMOUSEY: return m_wnd->GetMouseY()/((float)m_wnd->GetHeight());
+	case INPUT_MOUSE_AXIS_ABSOLUTEMOUSEXFROMCENTER: return ((m_wnd->GetMouseX()/((float)m_wnd->GetWidth()))*2.0f) - 1.0f;
+	case INPUT_MOUSE_AXIS_ABSOLUTEMOUSEYFROMCENTER: return ((m_wnd->GetMouseY()/((float)m_wnd->GetHeight()))*2.0f) - 1.0f;
+	case INPUT_MOUSE_AXIS_RELATIVEMOUSELEFT: if(m_wnd->GetMouseDeltaX() < 0) return MIN(1.0f, -(m_wnd->GetMouseDeltaX() / m_sensitivity)); else return 0.0f;
+	case INPUT_MOUSE_AXIS_RELATIVEMOUSERIGHT: if(m_wnd->GetMouseDeltaX() > 0) return MIN(1.0f, (m_wnd->GetMouseDeltaX() / m_sensitivity)); else return 0.0f;
+	case INPUT_MOUSE_AXIS_RELATIVEMOUSEUP: if(m_wnd->GetMouseDeltaY() < 0) return MIN(1.0f, -(m_wnd->GetMouseDeltaY() / m_sensitivity)); else return 0.0f;
+	case INPUT_MOUSE_AXIS_RELATIVEMOUSEDOWN: if(m_wnd->GetMouseDeltaY() > 0) return MIN(1.0f, (m_wnd->GetMouseDeltaY() / m_sensitivity)); else return 0.0f;
+	case INPUT_MOUSE_AXISPN_RELATIVEMOUSEX: return CLAMP((m_wnd->GetMouseDeltaX() / m_sensitivity), -1.0f, 1.0f);
+	case INPUT_MOUSE_AXISPN_RELATIVEMOUSEY: return CLAMP((m_wnd->GetMouseDeltaY() / m_sensitivity), -1.0f, 1.0f);
+	}
+	return false;
+}
+
+CInputController_Mouse::~CInputController_Mouse()
+{
+	m_wnd->RemoveEventHandler(m_scrollhandler);
+}
+
+static enum_input_t mouseEnums[] = 
+{	
+	{ INPUT_MOUSE_BUTTON_LEFT, "MOUSE_LEFT" },
+	{ INPUT_MOUSE_BUTTON_RIGHT, "MOUSE_RIGHT" },
+	{ INPUT_MOUSE_BUTTON_MIDDLE, "MOUSE_MIDDLE" },
+	{ INPUT_MOUSE_BUTTON_SPECIAL0, "MOUSE_SPECIAL0" },
+	{ INPUT_MOUSE_BUTTON_SPECIAL1, "MOUSE_SPECIAL1" },
+	{ INPUT_MOUSE_BUTTON_SCROLLUP, "MOUSE_SCROLLUP" },
+	{ INPUT_MOUSE_BUTTON_SCROLLDOWN, "MOUSE_SCROLLDOWN" },
+	{ INPUT_MOUSE_AXIS_ABSOLUTEMOUSEX, "MOUSE_ABSOLUTEMOUSEX" },
+	{ INPUT_MOUSE_AXIS_ABSOLUTEMOUSEY, "MOUSE_ABSOLUTEMOUSEY" },
+	{ INPUT_MOUSE_AXIS_ABSOLUTEMOUSEXFROMCENTER, "MOUSE_ABSOLUTEMOUSEXFROMCENTER" },
+	{ INPUT_MOUSE_AXIS_ABSOLUTEMOUSEYFROMCENTER, "MOUSE_ABSOLUTEMOUSEYFROMCENTER" },
+	{ INPUT_MOUSE_AXIS_RELATIVEMOUSELEFT, "MOUSE_RELATIVEMOUSELEFT" },
+	{ INPUT_MOUSE_AXIS_RELATIVEMOUSERIGHT, "MOUSE_RELATIVEMOUSERIGHT" },
+	{ INPUT_MOUSE_AXIS_RELATIVEMOUSEUP, "MOUSE_RELATIVEMOUSEUP" },
+	{ INPUT_MOUSE_AXIS_RELATIVEMOUSEDOWN, "MOUSE_RELATIVEMOUSEDOWN" },
+	{ INPUT_MOUSE_AXISPN_RELATIVEMOUSEX, "MOUSE_RELATIVEMOUSEX" },
+	{ INPUT_MOUSE_AXISPN_RELATIVEMOUSEY, "MOUSE_RELATIVEMOUSEY" },
+};
+
+enum_input_t* CInputController_Mouse::GetInputEnum()
+{
+	return mouseEnums;
+	
+}
+
+int CInputController_Mouse::GetInputEnumCount()
+{
+	return sizeof(mouseEnums)/sizeof(enum_input_t);
+}
+
+//[[ XBOX CONTROLLER ]]
+
+CInputController_Xbox::CInputController_Xbox(renderer::CRenderer* _rnd, XboxController* controller)
+: CInputController_Base(_rnd)
+, m_controller(controller)
+{
+}
+
+bool CInputController_Xbox::IsValidInput(input_t input)
+{
+	if(!m_controller->isActive()) return false;
+	return input >= INPUT_XBOX_BUTTON_OFFSET && input < INPUT_XBOX_AXISPN_COUNT;
+}
+
+bool CInputController_Xbox::i_GetButtonPressed( input_t input )
+{
+	switch(input)
+	{
+	case INPUT_XBOX_BUTTON_FACE_BOTTOM: return m_controller->GetButtonState(XboxController::BTN_FACE_BOTTOM);
+	case INPUT_XBOX_BUTTON_FACE_TOP: return m_controller->GetButtonState(XboxController::BTN_FACE_TOP);
+	case INPUT_XBOX_BUTTON_FACE_LEFT: return m_controller->GetButtonState(XboxController::BTN_FACE_LEFT);
+	case INPUT_XBOX_BUTTON_FACE_RIGHT: return m_controller->GetButtonState(XboxController::BTN_FACE_RIGHT);
+	case INPUT_XBOX_BUTTON_SHOULDER_FRONT_LEFT: return m_controller->GetButtonState(XboxController::BTN_LEFT_SHOULDER);
+	case INPUT_XBOX_BUTTON_SHOULDER_FRONT_RIGHT: return m_controller->GetButtonState(XboxController::BTN_RIGHT_SHOULDER);
+	case INPUT_XBOX_BUTTON_START: return m_controller->GetButtonState(XboxController::BTN_START);
+	case INPUT_XBOX_BUTTON_BACK: return m_controller->GetButtonState(XboxController::BTN_BACK);
+	case INPUT_XBOX_THUMB_LEFT_PRESS: return m_controller->GetButtonState(XboxController::BTN_LEFT_THUMB);
+	case INPUT_XBOX_THUMB_RIGHT_PRESS: return m_controller->GetButtonState(XboxController::BTN_RIGHT_THUMB);
+	case INPUT_XBOX_DPAD_LEFT: return m_controller->GetButtonState(XboxController::BTN_DPAD_LEFT);
+	case INPUT_XBOX_DPAD_RIGHT: return m_controller->GetButtonState(XboxController::BTN_DPAD_RIGHT);
+	case INPUT_XBOX_DPAD_UP: return m_controller->GetButtonState(XboxController::BTN_DPAD_UP);
+	case INPUT_XBOX_DPAD_DOWN: return m_controller->GetButtonState(XboxController::BTN_DPAD_DOWN);
+	}
+	return false;
+}
+
+float CInputController_Xbox::i_GetAxis( input_t input )
+{
+	switch(input)
+	{
+	case INPUT_XBOX_AXIS_SHOULDER_REAR_LEFT:	return m_controller->GetLeftTriggerState();
+	case INPUT_XBOX_AXIS_SHOULDER_REAR_RIGHT:	return m_controller->GetRightTriggerState();
+	case INPUT_XBOX_AXISPN_THUMB_LEFT_X:		return m_controller->GetLeftThumbStateX();
+	case INPUT_XBOX_AXISPN_THUMB_LEFT_Y:		return m_controller->GetLeftThumbStateY();
+	case INPUT_XBOX_AXISPN_THUMB_RIGHT_X:		return m_controller->GetRightThumbStateX();
+	case INPUT_XBOX_AXISPN_THUMB_RIGHT_Y:		return m_controller->GetRightThumbStateY();
+	}
+	return false;
+}
+
+CInputController_Xbox::~CInputController_Xbox()
+{
+}
+
+static enum_input_t pcXboxEnums[] = 
+{
+	{ INPUT_XBOX_BUTTON_FACE_BOTTOM, "XBOX_FACE_BOTTOM" },
+	{ INPUT_XBOX_BUTTON_FACE_TOP, "XBOX_FACE_TOP" },
+	{ INPUT_XBOX_BUTTON_FACE_LEFT, "XBOX_FACE_LEFT" },
+	{ INPUT_XBOX_BUTTON_FACE_RIGHT, "XBOX_FACE_RIGHT" },
+	{ INPUT_XBOX_BUTTON_SHOULDER_FRONT_LEFT, "XBOX_SHOULDER_FRONT_LEFT" },
+	{ INPUT_XBOX_BUTTON_SHOULDER_FRONT_RIGHT, "XBOX_SHOULDER_FRONT_RIGHT" },
+	{ INPUT_XBOX_BUTTON_START, "XBOX_START" },
+	{ INPUT_XBOX_BUTTON_BACK, "XBOX_BACK" },
+	{ INPUT_XBOX_THUMB_LEFT_PRESS, "XBOX_THUMBLEFT_PRESS" },
+	{ INPUT_XBOX_THUMB_RIGHT_PRESS, "XBOX_THUMBRIGHT_PRESS" },
+	{ INPUT_XBOX_DPAD_RIGHT, "XBOX_RIGHT" },
+	{ INPUT_XBOX_DPAD_LEFT, "XBOX_LEFT" },
+	{ INPUT_XBOX_DPAD_UP, "XBOX_UP" },
+	{ INPUT_XBOX_DPAD_DOWN, "XBOX_DOWN" },
+
+	{ INPUT_XBOX_AXIS_SHOULDER_REAR_LEFT, "XBOX_SHOULDER_REAR_LEFT" },
+	{ INPUT_XBOX_AXIS_SHOULDER_REAR_RIGHT, "XBOX_SHOULDER_REAR_RIGHT" },
+	{ INPUT_XBOX_AXISPN_THUMB_LEFT_X, "XBOX_THUMB_LEFT_X" },
+	{ INPUT_XBOX_AXISPN_THUMB_LEFT_Y, "XBOX_THUMB_LEFT_Y" },
+	{ INPUT_XBOX_AXISPN_THUMB_RIGHT_X, "XBOX_THUMB_RIGHT_X" },
+	{ INPUT_XBOX_AXISPN_THUMB_RIGHT_Y, "XBOX_THUMB_RIGHT_Y" },
+};
+
+enum_input_t* CInputController_Xbox::GetInputEnum()
+{
+	return pcXboxEnums;
+}
+
+int CInputController_Xbox::GetInputEnumCount()
+{
+	return sizeof(pcXboxEnums)/sizeof(enum_input_t);
+}
+
+
+//[[PS3 CONTROLLER]]
+CInputController_PS3::CInputController_PS3( renderer::CRenderer* _rnd, int controllerIndex ):
+CInputController_Base(_rnd)
+{
+#ifdef SN_TARGET_PS3
+	if(_rnd->GetType() == renderer::RENDERER_PS3)
+	{
+		m_wnd = reinterpret_cast<rendererPS3::CWindow*>(&_rnd->GetWindow());
+		m_wnd->SetPressMode(true);
+	}
+#endif
+}
+
+CInputController_PS3::~CInputController_PS3()
+{
+
+}
+
+static enum_input_t ps3dualshockenum[] = {
+	{ INPUT_PS3_BUTTON_LEFT, "PS3_LEFT" },
+	{ INPUT_PS3_BUTTON_RIGHT, "PS3_RIGHT" },
+	{ INPUT_PS3_BUTTON_UP, "PS3_UP" },
+	{ INPUT_PS3_BUTTON_DOWN, "PS3_DOWN" },
+	{ INPUT_PS3_BUTTON_SELECT, "PS3_SELECT" },
+	{ INPUT_PS3_BUTTON_START, "PS3_START" },
+	{ INPUT_PS3_BUTTON_CROSS, "PS3_CROSS" },
+	{ INPUT_PS3_BUTTON_CIRCLE, "PS3_CIRCLE" },
+	{ INPUT_PS3_BUTTON_SQUARE, "PS3_SQUARE" },
+	{ INPUT_PS3_BUTTON_TRIANGLE, "PS3_TRIANGLE" },
+	{ INPUT_PS3_BUTTON_L1, "PS3_L1" },
+	{ INPUT_PS3_BUTTON_R1, "PS3_R1" },
+	{ INPUT_PS3_BUTTON_L3, "PS3_L3" },
+	{ INPUT_PS3_BUTTON_R3, "PS3_R3" },
+	{ INPUT_PS3_AXIS_L2, "PS3_L2" },
+	{ INPUT_PS3_AXIS_R2, "PS3_R2" },
+	{ INPUT_PS3_AXIS_THUMBLEFT_LEFT, "PS3_THUMBLEFT_LEFT" },
+	{ INPUT_PS3_AXIS_THUMBLEFT_RIGHT, "PS3_THUMBLEFT_RIGHT" },
+	{ INPUT_PS3_AXIS_THUMBLEFT_UP, "PS3_THUMBLEFT_UP" },
+	{ INPUT_PS3_AXIS_THUMBLEFT_DOWN, "PS3_THUMBLEFT_DOWN" },
+	{ INPUT_PS3_AXIS_THUMBRIGHT_LEFT, "PS3_THUMBRIGHT_LEFT" },
+	{ INPUT_PS3_AXIS_THUMBRIGHT_RIGHT, "PS3_THUMBRIGHT_RIGHT" },
+	{ INPUT_PS3_AXIS_THUMBRIGHT_UP, "PS3_THUMBRIGHT_UP" },
+	{ INPUT_PS3_AXIS_THUMBRIGHT_DOWN, "PS3_THUMBRIGHT_DOWN" },
+	{ INPUT_PS3_AXISPN_THUMBLEFT_X, "PS3_THUMBLEFT_X" },
+	{ INPUT_PS3_AXISPN_THUMBLEFT_Y, "PS3_THUMBLEFT_Y" },
+	{ INPUT_PS3_AXISPN_THUMBRIGHT_X, "PS3_THUMBRIGHT_X" },
+	{ INPUT_PS3_AXISPN_THUMBRIGHT_Y, "PS3_THUMBRIGHT_Y" },
+};
+
+enum_input_t* CInputController_PS3::GetInputEnum()
+{
+	return ps3dualshockenum;
+}
+
+int CInputController_PS3::GetInputEnumCount()
+{
+	return sizeof(ps3dualshockenum) / sizeof(enum_input_t);
+}
+
+bool CInputController_PS3::i_GetButtonPressed( input_t input )
+{
+#ifdef SN_TARGET_PS3
+	rendererPS3::PadButtonIdentifier pbi;
+	switch(input)
+	{
+		case INPUT_PS3_BUTTON_LEFT:			pbi = rendererPS3::PBI_Left; break;
+		case INPUT_PS3_BUTTON_RIGHT:		pbi = rendererPS3::PBI_Right; break;
+		case INPUT_PS3_BUTTON_UP:			pbi = rendererPS3::PBI_Up; break;
+		case INPUT_PS3_BUTTON_DOWN:			pbi = rendererPS3::PBI_Down; break;
+		case INPUT_PS3_BUTTON_SELECT:		pbi = rendererPS3::PBI_Select; break;
+		case INPUT_PS3_BUTTON_START:		pbi = rendererPS3::PBI_Start; break;
+		case INPUT_PS3_BUTTON_CROSS:		pbi = rendererPS3::PBI_Button_Cross; break;
+		case INPUT_PS3_BUTTON_CIRCLE:		pbi = rendererPS3::PBI_Button_Circle; break;
+		case INPUT_PS3_BUTTON_SQUARE:		pbi = rendererPS3::PBI_Button_Square; break;
+		case INPUT_PS3_BUTTON_TRIANGLE:		pbi = rendererPS3::PBI_Button_Triangle; break;
+		case INPUT_PS3_BUTTON_L1:			pbi = rendererPS3::PBI_Shoulder_Left1; break;
+		case INPUT_PS3_BUTTON_R1:			pbi = rendererPS3::PBI_Shoulder_Right1; break;
+		case INPUT_PS3_BUTTON_L3:			pbi = rendererPS3::PBI_Left_Stick_Press; break;
+		case INPUT_PS3_BUTTON_R3:			pbi = rendererPS3::PBI_Right_Stick_Press; break;
+	}
+	return m_wnd->ButtonPressed(m_controllerIndex, pbi);
+#else
+	return false;
+#endif
+}
+
+float CInputController_PS3::i_GetAxis( input_t input )
+{
+#ifdef SN_TARGET_PS3
+	rendererPS3::PadButtonIdentifier pbi;
+	switch(input)
+	{
+	case INPUT_PS3_AXIS_L2: return m_wnd->GetPressButtonValueFloat(m_controllerIndex, rendererPS3::PBI_Shoulder_Left2);
+	case INPUT_PS3_AXIS_R2: return m_wnd->GetPressButtonValueFloat(m_controllerIndex, rendererPS3::PBI_Shoulder_Right2);
+	case INPUT_PS3_AXIS_THUMBLEFT_LEFT: return CLAMP(-m_wnd->GetAxisValueFloat(m_controllerIndex, rendererPS3::PBI_Left_Stick).x, 0.0f, 1.0f);
+	case INPUT_PS3_AXIS_THUMBLEFT_RIGHT: return CLAMP(m_wnd->GetAxisValueFloat(m_controllerIndex, rendererPS3::PBI_Left_Stick).x, 0.0f, 1.0f);
+	case INPUT_PS3_AXIS_THUMBLEFT_UP: return CLAMP(-m_wnd->GetAxisValueFloat(m_controllerIndex, rendererPS3::PBI_Left_Stick).y, 0.0f, 1.0f);
+	case INPUT_PS3_AXIS_THUMBLEFT_DOWN: return CLAMP(m_wnd->GetAxisValueFloat(m_controllerIndex, rendererPS3::PBI_Left_Stick).y, 0.0f, 1.0f);
+	case INPUT_PS3_AXIS_THUMBRIGHT_LEFT: return CLAMP(-m_wnd->GetAxisValueFloat(m_controllerIndex, rendererPS3::PBI_Right_Stick).x, 0.0f, 1.0f);
+	case INPUT_PS3_AXIS_THUMBRIGHT_RIGHT: return CLAMP(m_wnd->GetAxisValueFloat(m_controllerIndex, rendererPS3::PBI_Right_Stick).x, 0.0f, 1.0f);
+	case INPUT_PS3_AXIS_THUMBRIGHT_UP: return CLAMP(-m_wnd->GetAxisValueFloat(m_controllerIndex, rendererPS3::PBI_Right_Stick).y, 0.0f, 1.0f);
+	case INPUT_PS3_AXIS_THUMBRIGHT_DOWN: return CLAMP(m_wnd->GetAxisValueFloat(m_controllerIndex, rendererPS3::PBI_Right_Stick).y, 0.0f, 1.0f);
+	case INPUT_PS3_AXISPN_THUMBLEFT_X: return m_wnd->GetAxisValueFloat(m_controllerIndex, rendererPS3::PBI_Left_Stick).x;
+	case INPUT_PS3_AXISPN_THUMBLEFT_Y: return m_wnd->GetAxisValueFloat(m_controllerIndex, rendererPS3::PBI_Left_Stick).y;
+	case INPUT_PS3_AXISPN_THUMBRIGHT_X: return m_wnd->GetAxisValueFloat(m_controllerIndex, rendererPS3::PBI_Right_Stick).x;
+	case INPUT_PS3_AXISPN_THUMBRIGHT_Y: return m_wnd->GetAxisValueFloat(m_controllerIndex, rendererPS3::PBI_Right_Stick).y;
+	}
+
+	
+#endif
+	return 0.0f;
+}
