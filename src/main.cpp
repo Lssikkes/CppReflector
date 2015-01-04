@@ -15,11 +15,6 @@
 // TODO: bit fields
 // TODO: pointer to member objects
 
-class BitField
-{
-	int (a=10) : 20;
-};
-
 int main(int argc, char** argv)
 {
 	
