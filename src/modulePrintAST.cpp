@@ -7,7 +7,7 @@ public:
 	virtual void Execute(tools::CommandLineParser& cmdOpts, ASTNode* rootNode, std::vector<std::unique_ptr<ASTParser>>& parsers)
 	{
 		fprintf(stderr, "********************* PRINT AST ***********************\n");
-		ASTProcessor::Print(stderr, rootNode);
+		ASTProcessor::Print(stdout, rootNode);
 	}
 
 };
