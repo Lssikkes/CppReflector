@@ -2,7 +2,7 @@
 #include "tools.h"
 #include "tokenizer.h"
 #include "astProcessor.h"
-#include "astGenerator.h"
+#include "astParser.h"
 #include <mutex>
 
 #include <omp.h>

@@ -5,6 +5,14 @@
 #include <memory>
 #include "ast.h"
 
+struct ASTDeclarationParsingOptions
+{
+	explicit ASTDeclarationParsingOptions(bool _AllowCtor = false, bool _AllowBitfield = false, bool _RequireIdentifier = false) { AllowCtor = _AllowCtor; AllowBitfield = _AllowBitfield; RequireIdentifier = _RequireIdentifier; }
+	bool AllowCtor = false;
+	bool AllowBitfield = false;
+	bool RequireIdentifier = false;
+};
+
 class ASTParser: public ASTTokenSource
 {
 public:
@@ -56,11 +64,14 @@ protected:
 	bool ParsePreprocessor(ASTNode* parent, ASTPosition& position);
 	bool ParseConstructorInitializer(ASTNode* parent, ASTPosition& cposition);
 	bool ParseOperatorType(ASTNode* parent, ASTPosition& cposition, std::vector<ASTTokenIndex>& ctokens);
-	bool ParseDeclaration( ASTNode* parent, ASTPosition& cposition );
-	bool _ParseDeclaration_HeadSubs(ASTPosition &position, ASTNode* parent, std::unique_ptr<ASTType> &headType, int &lastSubID);
+	bool ParseDeclaration(ASTNode* parent, ASTPosition& cposition, ASTDeclarationParsingOptions opts);
+	bool _ParseDeclaration_HeadSubs(ASTPosition &position, ASTNode* parent, std::unique_ptr<ASTType> &headType, int &lastSubID, ASTDeclarationParsingOptions opts);
 
-	bool ParseDeclarationHead(ASTNode* parent, ASTPosition& cposition, ASTType* type);
-	bool ParseDeclarationSub(ASTNode* parent, ASTPosition& cposition, ASTType* type, ASTType* headType, bool requireIdentifier=false);
+	bool ParseDeclarationHead(ASTNode* parent, ASTPosition& cposition, ASTType* type, ASTDeclarationParsingOptions opts);
+	bool ParseDeclarationSub(ASTNode* parent, ASTPosition& cposition, ASTType* type, ASTType* headType, ASTDeclarationParsingOptions opts);
+
+	bool ParseConstructorArguments(ASTNode* argNode, ASTPosition &position);
+
 	bool ParseModifierToken(ASTPosition& position, std::vector<std::pair<ASTTokenIndex, ASTTokenIndex>>& modifierTokens);
 	bool ParseMSVCDeclspecOrGCCAttribute(ASTPosition &position, std::pair<ASTTokenIndex, ASTTokenIndex>& outTokenStream);
 
@@ -70,8 +81,8 @@ protected:
 	bool ParseNTypeBase(ASTPosition &position, ASTType* typeNode);
 	bool ParseNTypeIdentifier(ASTPosition &position, ASTType* typeNode);
 	bool ParseNTypeFunctionPointer(ASTPosition &position, ASTType* typeNode);
-	bool ParseNTypeSinglePointersAndReferences(ASTPosition &position, ASTType* typeNode, bool fp=false);
-	bool ParseNTypePointersAndReferences(ASTPosition &position, ASTType* typeNode, bool fp=false);
+	bool ParseNTypeSinglePointersAndReferences(ASTPosition &position, ASTType* typeNode, bool identifierScope=false);
+	bool ParseNTypePointersAndReferences(ASTPosition &position, ASTType* typeNode, bool identifierScope=false);
 	bool ParseNTypeArrayDefinitions(ASTPosition &position, ASTType* typeNode);
 
 	bool ParseUnknown(ASTNode* parent, ASTPosition& position);
@@ -81,7 +92,7 @@ protected:
 
 	bool ParseDeclarationSubArguments(ASTPosition &position, ASTNode* parent);
 	bool ParseDeclarationSubArgumentsScoped(ASTPosition &position, ASTNode* parent, Token::Type leftScope, Token::Type rightScope);
-
+	bool ParseDeclarationSubArgumentsScopedWithNonTypes(ASTPosition &cposition, ASTNode* parent, Token::Type leftScope, Token::Type rightScope);
 
 
 };

@@ -1,3 +1,28 @@
+﻿class TestBitField
+{
+public:
+	int a : 32, a2 : 32;
+	signed int b : 32;
+	unsigned int c : 32;
+	short d : 16;
+	char e : 8;
+	long long f : 64;
+	unsigned long long g : 64;
+	unsigned long int h : 32;
+	//float err_j : 32;
+	//double err_k : 64;
+	//int* err_l : 32;
+};
+
+template <int V>
+class TestTemplatedBitfield
+{
+	int a : V;
+	int b : (V+V) ;
+};
+
+TestTemplatedBitfield<10> TestTemplatedBitfieldInstance;
+
 class TestFunctionPointers
 {
 public:
@@ -192,6 +217,7 @@ public:
 	TestConstructors::TestConstructors(float a, std::string b);
 	TestConstructors::~TestConstructors();
 
+	::TestConstructors() {}
 	TestConstructors() : foo(10) {}
 	TestConstructors() : foo(10), bar(20) {	}
 	
@@ -437,4 +463,100 @@ class TestClassOperators
 };
 
 
+// the harder cases I've found in different projects of mine
+namespace HardCases
+{
+	// ridiculous pointers
+	int *normal_pointer;
+	int (*wrapped_pointer);
+	int (*wrapped_pointer_with_assign)=nullptr;
+	int (&wrapped_reference_with_assign)=*wrapped_pointer;
+	int ((*double_wrapped_ptr_with_assign))()=nullptr;
+	int (*(*double_wrapped_ptr_to_ptr_with_assign))()=nullptr;
 
+	// std::function
+	std::function<void()> gFunctionA;
+	std::function<void(int)> gFunctionB;
+	std::function<void f(int)> gFunctionC;
+	std::function<void f(int a)> gFunctionC;
+	int TestStdFunctionA(std::function<void()> myFunction) {}
+
+	// type template arguments
+	CStaticArray<int, 8> gStaticArrayA;
+	CCompileTimeHash<"test"> gCTimeHash;
+
+	// variable declaration with copy constructor
+	static ModuleRegistration gModuleParserANotAFunction(some_variable);					// this can be misinterpreted as a function since the parser doesn't know some_variable is a type or variable (a b(c); ambiguity)
+	static ModuleRegistration gModuleParserB(int);											// this can only be a function (built-in type)
+	static ModuleRegistration gModuleParserC(10);											// this can only be a ctor call
+	static ModuleRegistration gModuleParserD("cpp_parser");									// this can only be a ctor call
+	static ModuleRegistration gModuleParserE("cpp_parser", new ModuleCppParser(false));		// this can only be a ctor call
+	static ModuleRegistration gModuleParserF("cpp_parser_mt", new ModuleCppParser(true) );	// this can only be a ctor call
+
+	// complicated templates (source http://en.cppreference.com/w/cpp/language/template_parameters)
+	namespace TestComplicatedTemplates
+	{
+
+		template<class T, const char* p> class X {};
+		X<int, "Studebaker"> x1; // Error: string literal as template-argument
+ 
+		template<int* p> class X {};
+		int a[10];
+		struct S { int m; static int s; } s;
+		X<&a[2]> x3;  // error: address of array element
+		X<&s.m> x4;   // error: address of non-static member
+		X<&s.s> x5;   // OK: address of static member
+		X<&S::s> x6;  // also OK: address of static member
+ 
+		template<const int& CRI> struct B { /* ... */ };
+		B<1> b2;     // error: temporary would be required for template argument
+		int c = 1;
+		B<c> b1;     // OK
+	}
+
+	namespace TestComplicatedTemplates2
+	{
+		// simple non-type template parameter
+		template<int N>
+		struct S {
+			int a[N];
+		};
+ 
+		template<const char*>
+		struct S2 {};
+ 
+		// complicated non-type example
+
+		// too complicated right now: no support for pointer to member objects, and the parser chokes on int (&ra)[5]
+		/*template <
+			char c, // integral type
+			int (&ra)[5], // lvalue reference to object (of array type)
+			int (*pf)(int), // pointer to function
+			int (S<10>::*a)[10] // pointer to member object (of type int[10])
+		> struct Complicated {
+			// calls the function selected at compile time
+			// and stores the result in the array selected at compile time
+			void foo(char base) {
+				ra[4] = pf(c - base);
+			}
+		};*/
+ 
+		//  S2<"fail"> s2; // Error: string literal cannot be used
+		char okay[] = "okay"; // static object with linkage
+		// S2< &okay[0] > s2; // Error: array element has no linkage
+		S2<okay> s2; // works
+ 
+		int a[5];
+		int f(int n) { return n;}
+		int main()
+		{
+			S<10> s; // s.a is an array of 10 int
+			s.a[9] = 4;
+ 
+			Complicated<'2', a, f, &S<10>::a> c;
+			c.foo('0');
+ 
+			std::cout << s.a[9] << a[4] << '\n';
+		}
+	}
+}

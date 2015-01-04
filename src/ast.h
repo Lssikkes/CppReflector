@@ -33,10 +33,13 @@ public:
 	
 	void SetType(const std::string& a_type) { type = a_type; }
 	void AddData(const std::string& a_dataValue) { data.push_back(a_dataValue); }
+
+	virtual std::string ToString() { return ""; }
 protected:
 	friend class ASTParser;
 	std::string type;
 	std::vector<std::string> data;
+	
 	ASTNode* parent;
 	std::vector<ASTNode*> m_children;
 private:
@@ -62,6 +65,17 @@ public:
 	std::string ToString();
 };
 
+
+class ASTTokenNode : public ASTNode
+{
+public:
+	ASTTokenNode(ASTTokenSource* src) : tokenSource(src) { }
+	ASTTokenSource* tokenSource;
+	std::vector<ASTTokenIndex> Tokens;
+	virtual const std::vector<std::string>& GetData();
+	virtual std::string ToString();
+};
+
 class ASTType : public ASTNode
 {
 public:
@@ -72,19 +86,19 @@ public:
 	ASTNode* ndFuncArgumentList = 0;
 	ASTNode* ndFuncModifierList = 0;
 	ASTNode* ndFuncPointerArgumentList = 0;
-	std::vector<ASTTokenIndex> typeNamespaces;
 	std::vector<ASTTokenIndex> typeName;
 	std::vector<ASTTokenIndex> typeIdentifier;
 	std::vector<std::pair<ASTTokenIndex, ASTTokenIndex> > typeModifiers;
 	std::vector<ASTTokenIndex> typeOperatorTokens;
 	std::vector<ASTPointerType> typePointers;
+	std::vector<ASTPointerType> typeIdentifierScopedPointers;
 	std::vector<std::vector<ASTTokenIndex>> typeArrayTokens;
 	std::vector<int> typeTemplateIndices;
-	std::vector<ASTPointerType> typeFunctionPointerPointers;
+	
 	std::vector<int> typeFunctionPointerArgumentIndices;
 
 	virtual const std::vector<std::string>& GetData();
-	std::string ToString();
+	virtual std::string ToString();
 	virtual const std::string& GetType() const;
 	void MergeData(ASTType* other);
 };
