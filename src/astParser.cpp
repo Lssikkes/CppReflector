@@ -1323,7 +1323,7 @@ bool ASTParser::ParseModifierToken(ASTPosition& cposition, std::vector<std::pair
 	case Token::Type::Volatile:
 	case Token::Type::Unsigned:
 	case Token::Type::Signed:
-	
+	case Token::Type::Typename:
 	case Token::Type::Static:
 	case Token::Type::Mutable:
 	case Token::Type::Class:
@@ -1393,11 +1393,6 @@ bool ASTParser::ParseNTypeBase(ASTPosition &position, ASTType* typeNode)
 					break; // this must be the variable name (two keywords not allowed in a type)
 
 			}
-		}
-		else if ((position.GetToken().TokenType == Token::Type::Typename) && typeWordIndex == -1)
-		{
-			typeTokens.push_back(position.GetTokenIndex());
-			typeWordIndex = typeTokens.size() - 1;
 		}
 		else if (ParseModifierToken(position, modifierTokens))
 			continue;
