@@ -35,7 +35,7 @@ public:
 
 		ASTParser& Parser;
 		ASTTokenIndex Position;
-		operator unsigned int() { return Position; }
+		operator ASTTokenIndex() { return Position; }
 	};
 
 	ASTParser() {}
@@ -65,7 +65,7 @@ protected:
 	bool ParseConstructorInitializer(ASTNode* parent, ASTPosition& cposition);
 	bool ParseOperatorType(ASTNode* parent, ASTPosition& cposition, std::vector<ASTTokenIndex>& ctokens);
 	bool ParseDeclaration(ASTNode* parent, ASTPosition& cposition, ASTDeclarationParsingOptions opts);
-	bool _ParseDeclaration_HeadSubs(ASTPosition &position, ASTNode* parent, std::unique_ptr<ASTType> &headType, int &lastSubID, ASTDeclarationParsingOptions opts);
+	bool _ParseDeclaration_HeadSubs(ASTPosition &position, ASTNode* parent, std::unique_ptr<ASTType> &headType, size_t &lastSubID, ASTDeclarationParsingOptions opts);
 
 	bool ParseDeclarationHead(ASTNode* parent, ASTPosition& cposition, ASTType* type, ASTDeclarationParsingOptions opts);
 	bool ParseDeclarationSub(ASTNode* parent, ASTPosition& cposition, ASTType* type, ASTType* headType, ASTDeclarationParsingOptions opts);

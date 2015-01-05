@@ -1032,13 +1032,13 @@ bool ASTParser::ParseDeclarationSub(ASTNode* parent, ASTPosition& cposition, AST
 			type->ndFuncModifierList = funcModifierList.get();
 
 			// fill modifier data
-			for (int i = 0; i < funcModifiers.size(); i++)
+			for (size_t i = 0; i < funcModifiers.size(); i++)
 			{
 				std::unique_ptr<ASTTokenNode> funcModifier(new ASTTokenNode(this));
 				funcModifier->type = "MODIFIER";
 
 				std::string modifierData;
-				for (int j = funcModifiers[i].first; j <= funcModifiers[i].second; j++)
+				for (size_t j = funcModifiers[i].first; j <= funcModifiers[i].second; j++)
 				{
 					if (ASTPosition::FilterWhitespaceComments(Tokens[j]) == false) // dont include whitespace and comments
 						continue;
@@ -1105,7 +1105,7 @@ bool ASTParser::ParseDeclaration(ASTNode* parent, ASTPosition& cposition, ASTDec
 
 	ASTPosition position = cposition;
 	std::unique_ptr<ASTType> headType(new ASTType(this));
-	int lastSubID = -1;
+	size_t lastSubID = -1;
 	
 	// HEAD then SUB,SUB,SUB,...
 	if (_ParseDeclaration_HeadSubs(position, parent, headType, lastSubID, opts) == false)
@@ -1170,7 +1170,7 @@ bool ASTParser::ParseDeclaration(ASTNode* parent, ASTPosition& cposition, ASTDec
 
 }
 
-bool ASTParser::_ParseDeclaration_HeadSubs(ASTPosition &position, ASTNode* parent, std::unique_ptr<ASTType> &headType, int &lastSubID, ASTDeclarationParsingOptions opts)
+bool ASTParser::_ParseDeclaration_HeadSubs(ASTPosition &position, ASTNode* parent, std::unique_ptr<ASTType> &headType, size_t &lastSubID, ASTDeclarationParsingOptions opts)
 {
 	ASTPosition beforeHeadPosition = position;
 	ParseDeclarationHead(parent, position, headType.get(), opts);
@@ -1359,7 +1359,7 @@ bool ASTParser::ParseNTypeBase(ASTPosition &position, ASTType* typeNode)
 {
 	std::vector<ASTTokenIndex>& typeTokens = typeNode->typeName;
 	std::vector<std::pair<ASTTokenIndex, ASTTokenIndex> >& modifierTokens = typeNode->typeModifiers;
-	int typeWordIndex = -1;
+	size_t typeWordIndex = -1;
 	while (true)
 	{
 		if (position.GetToken().TokenType == Token::Type::Keyword || position.GetToken().TokenType == Token::Type::BuiltinType || position.GetToken().TokenType == Token::Type::Void)

@@ -45,7 +45,7 @@ std::string ASTType::ToString()
 	// type modifiers
 	for (auto& it : typeModifiers)
 	{
-		for (int i = it.first; i <= it.second; i++)
+		for (size_t i = it.first; i <= it.second; i++)
 			ret += tokenSource->Tokens[i].TokenData + "";
 		ret += " ";
 	}

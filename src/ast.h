@@ -10,7 +10,8 @@ public:
 	std::vector<Token> Tokens;
 };
 
-typedef unsigned int ASTTokenIndex;
+typedef size_t ASTTokenIndex;
+
 class ASTNode
 {
 public:

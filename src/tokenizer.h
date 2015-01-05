@@ -96,7 +96,7 @@ struct Token
 	std::string TokenData;
 	std::string TokenParsedData;
 	int TokenLine;
-	int TokenByteOffset;
+	size_t TokenByteOffset;
 
 	operator Type() { return TokenType; }
 };
@@ -121,12 +121,12 @@ public:
 protected:
 	Tokenizer(): m_offset(0) {}
 
-	virtual Tokenizer::Data PeekBytes(int numBytes, int offset = 0) = 0;
-	virtual int Advance(int numBytes)=0;
+	virtual Tokenizer::Data PeekBytes(size_t numBytes, size_t offset = 0) = 0;
+	virtual size_t Advance(size_t numBytes)=0;
 
-	Token PeekNextToken(int& offset);
+	Token PeekNextToken(size_t& offset);
 
-	__forceinline int AddPart(Token &token, const Data &next, int& offset)
+	__forceinline size_t AddPart(Token &token, const Data &next, size_t& offset)
 	{
 		token.TokenData += std::string(next.data, next.length);
 		offset += (int)next.length;
@@ -135,7 +135,7 @@ protected:
 
 	int IsCombinableWith(Token& tok, Token& nextToken);
 	void ConvertToSpecializedKeyword(Token& tokKeyword);
-	int m_offset;
+	size_t m_offset;
 };
 
 class StringTokenizer: public Tokenizer
@@ -143,8 +143,8 @@ class StringTokenizer: public Tokenizer
 public:
 	StringTokenizer(std::string data) { Source = data; }
 protected:
-	virtual Tokenizer::Data PeekBytes(int numBytes, int offset=0);
-	virtual int Advance(int numBytes);
+	virtual Tokenizer::Data PeekBytes(size_t numBytes, size_t offset = 0);
+	virtual size_t Advance(size_t numBytes);
 
 	std::string Source;
 };
