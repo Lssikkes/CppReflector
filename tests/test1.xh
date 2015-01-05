@@ -1,4 +1,33 @@
-﻿class TestBitField
+﻿//@[Serializable]
+template <class T>
+class Array
+{
+	Array(int size) { m_size = size; m_elements = new T[size]; }
+	int size() const { return m_size; }
+	operator T*() { return m_elements; }
+	operator const T*() const { return m_elements; }
+	T& operator [](size_t index) { return m_elements[index]; }
+	const T& operator [](size_t index) const { return m_elements[index]; }
+protected:
+	T* m_elements; //@<[ArraySize:size()]
+	int m_size;
+};
+
+//@[Serializable]
+//@[MemoryManagement:"ReferenceCount"]
+//@[Description:"Test Annotations"]
+//@[Triplet:a,b,c]
+//@[MultiLine1] //@[MultiLine2]
+class TestAnnotations
+{
+	int m_Integer; 
+	Array<int> m_Integers;
+
+	Texture* m_Texture;
+	Array<Texture> m_Textures;
+};
+
+class TestBitField
 {
 public:
 	int a : 32, a2 : 32;

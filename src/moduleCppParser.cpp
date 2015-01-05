@@ -22,7 +22,7 @@ public:
 		if (Multithreaded)
 		{
 			#pragma omp parallel for
-			for (int i = 0; i < opts.names.size(); i++)
+			for (size_t i = 0; i < opts.names.size(); i++)
 			{
 				ParseFile(opts, i, parsers, lkSuperRoot, rootNode);
 			}
@@ -46,7 +46,7 @@ public:
 		if (opts.options.find("verbose") != opts.options.end())
 			parser->Verbose = true;
 
-		std::unique_ptr<ASTNode> root(new ASTNode);
+		std::unique_ptr<ASTDataNode> root(new ASTDataNode);
 		root->SetType("FILE");
 		root->AddData(opts.names[i]);
 

@@ -5,10 +5,7 @@
 void ASTProcessor::Print(FILE* dev, ASTNode* node, int level)
 {
 	std::string allData;
-	for(auto it : node->GetData())
-		allData += it + "|" ;
-	if(allData.size() > 0)
-		allData.pop_back();
+	allData += node->ToString();
 
 	char padding[32];
 	memset(padding, ' ', 32);

@@ -1,16 +1,58 @@
 #include "ast.h"
+#include "tools.h"
 
-std::vector<ASTNode*> ASTNode::GatherAllChildren() const
+std::vector<ASTNode*> ASTNode::GatherChildrenRecursively() const
 {
 	std::vector<ASTNode*> ret;
 
 	for (auto& it : m_children)
 	{
-		auto subChildren = it->GatherAllChildren();
+		auto subChildren = it->GatherChildrenRecursively();
 		ret.push_back(it);
 		ret.insert(ret.end(), subChildren.begin(), subChildren.end());
 	}
 	return ret;
+}
+
+ASTNode* ASTNode::GetPreviousSibling() const
+{
+	if (parentIndex == -1)
+		return 0;
+	if (parentIndex == 0) 
+		return 0;
+	else 
+		return parent->Children()[parentIndex - 1];
+}
+
+ASTNode* ASTNode::GetNextSibling() const
+{
+	if (parentIndex == -1)
+		return 0;
+	if (parentIndex + 1 >= parent->Children().size()) 
+		return 0; 
+	else 
+		return parent->Children()[parentIndex + 1];
+}
+
+void ASTNode::DestroyChildren()
+{
+	for (auto it : m_children) 
+	{ 
+		it->DestroyChildren(); 
+		delete it; 
+	} 
+	m_children.clear();
+}
+
+void ASTNode::StealNodesFrom(ASTNode* node)
+{
+	AddNodes(node->Children());
+	node->m_children.clear();
+}
+
+const std::string& ASTNode::GetType() const
+{
+	return type;
 }
 
 const std::string& ASTType::GetType() const
@@ -43,122 +85,60 @@ std::string ASTType::ToString()
 	}
 
 	// type modifiers
-	for (auto& it : typeModifiers)
-	{
-		for (size_t i = it.first; i <= it.second; i++)
-			ret += tokenSource->Tokens[i].TokenData + "";
-		ret += " ";
-	}
+	ret += ToModifiersString();
 
-	if (typeName.size() > 0 && tokenSource->Tokens[typeName[0]].TokenType != Token::Type::BuiltinType && tokenSource->Tokens[typeName[0]].TokenType != Token::Type::Void) ret += "::";
+	// namespace symbol
+	if (typeName.size() > 0 &&
+		tokenSource->Tokens[typeName[0]].TokenType != Token::Type::BuiltinType &&
+		tokenSource->Tokens[typeName[0]].TokenType != Token::Type::Void)
+	{
+		ret += "::";
+	}
 
 	// name symbols
-	for (int i = 0; i < typeName.size(); i++)
-	{
-		Token* nextToken = 0;
-		if (i + 1 < typeName.size())
-			nextToken = &tokenSource->Tokens[typeName[i + 1]];
-
-		ret += tokenSource->Tokens[typeName[i]].TokenData;
-		if (tokenSource->Tokens[typeName[i]].TokenType != Token::Type::Doublecolon)
-		{
-			if (nextToken && nextToken->TokenType == Token::Type::Keyword)
-				ret.push_back(' ');
-			else if (nextToken && nextToken->TokenType == Token::Type::BuiltinType)
-				ret.push_back(' ');
-			else if (nextToken && nextToken->TokenType == Token::Type::Void)
-				ret.push_back(' ');
-
-		}
-	}
-	if (typeName.empty() == false) ret += " ";
+	ret += ToNameString();
+	tools::appendSpaceIfNeeded(ret);
 
 	// template arguments
-	if (ndTemplateArgumentList)
-	{
-		if (ret.size() > 0 && ret.back() == ' ')
-			ret.pop_back(); // remove trailing space
-
-		auto& children = ndTemplateArgumentList->Children();
-		ret += "<";
-		for (auto& it : children)
-		{
-			ret += it->ToString();
-			if (it != children.back())
-				ret += ", ";
-		}
-		ret += "> ";
-	}
+	ret += ToTemplateArgumentsString();
+	tools::appendSpaceIfNeeded(ret);
 
 	// pointer symbols (including pointer modifiers)
-	for (auto& it : typePointers)
-		ret += it.ToString() + " ";
+	ret += ToPointersString();
+	tools::appendSpaceIfNeeded(ret);
 
-	// array tokens
-	for (auto& it : typeArrayTokens)
-	{
-		ret += "[";
-		for (auto& it2 : it)
-			ret += tokenSource->Tokens[it2].TokenData;
-		ret += "]";
-	}
 
-	if (typeArrayTokens.size() > 0) ret += " ";
 
 	// function pointer prefix
 	if (!typeIdentifierScopedPointers.empty())
 		ret += "(";
 
-	for (auto& it : typeIdentifierScopedPointers)
-		ret += it.ToString() + " ";
+	// pointer identifier tokens
+	ret += ToPointerIdentifierScopedString();
+	tools::appendSpaceIfNeeded(ret);
 
 	// identifier
-	for (auto& it : typeIdentifier)
-		ret += tokenSource->Tokens[it].TokenData;
+	ret += ToIdentifierString();
 
 	// function pointer suffix
 	if (!typeIdentifierScopedPointers.empty())
 		ret += ")";
-	else if (typeIdentifier.size() > 0) ret += " ";
+	tools::appendSpaceIfNeeded(ret);
+
+	// array tokens
+	ret += ToArrayTokensString();
+	tools::appendSpaceIfNeeded(ret);
 
 	// bitfield
-	if (typeBitfieldTokens.size() > 0)
-		ret += ": ";
-	for (auto& it : typeBitfieldTokens)
-		ret += tokenSource->Tokens[it].TokenData + " ";
+	if (typeBitfieldTokens.size() > 0) ret += ": ";
+	ret += ToBitfieldString();
 
 	// operator
-	for (auto& it : typeOperatorTokens)
-		ret += tokenSource->Tokens[it].TokenData;
-
-	if (typeOperatorTokens.size() > 0) ret += " ";
+	ret += ToOperatorString();
+	tools::appendSpaceIfNeeded(ret);
 
 	// function arguments
-	ASTNode* args = 0;
-	if (args == 0 && ndFuncArgumentList)
-		args = ndFuncArgumentList;
-	if (args == 0 && ndFuncPointerArgumentList)
-		args = ndFuncPointerArgumentList;
-	if (args)
-	{
-		auto& children = args->Children();
-		ret += "(";
-		for (auto& it : children)
-		{
-			ASTType* t = dynamic_cast<ASTType*>(it);
-			if (t == 0)
-			{
-				if (it->GetType() == "DCL_VARARGS")
-					ret += "...";
-				continue; // skip non-types
-			}
-
-			ret += t->ToString();
-			if (it != children.back())
-				ret += ", ";
-		}
-		ret += ")";
-	}
+	ret += ToArgumentsString();
 
 	// remove trailing space
 	if (ret.size() > 0 && ret.back() == ' ')
@@ -194,27 +174,155 @@ void ASTType::MergeData(ASTType* other)
 }
 
 
-const std::vector<std::string>& ASTType::GetData()
+std::string ASTType::ToModifiersString()
 {
-	if (data.empty())
+	std::string ret;
+	for (auto& it : typeModifiers)
 	{
-		data.clear();
-		data.push_back(ToString());
+		for (size_t i = it.first; i <= it.second; i++)
+			ret += tokenSource->Tokens[i].TokenData + "";
+		ret += " ";
 	}
-	return data;
+	return ret;
 }
 
-
-const std::vector<std::string>& ASTTokenNode::GetData()
+std::string ASTType::ToNameString()
 {
-	if (data.empty())
+	std::string ret;
+	for (size_t i = 0; i < typeName.size(); i++)
 	{
-		data.clear();
-		for (auto it : Tokens)
-			data.push_back(tokenSource->Tokens[it].TokenData);
+		Token* nextToken = 0;
+		if (i + 1 < typeName.size())
+			nextToken = &tokenSource->Tokens[typeName[i + 1]];
+
+		ret += tokenSource->Tokens[typeName[i]].TokenData;
+		if (tokenSource->Tokens[typeName[i]].TokenType != Token::Type::Doublecolon)
+		{
+			if (nextToken && nextToken->TokenType == Token::Type::Keyword)
+				ret.push_back(' ');
+			else if (nextToken && nextToken->TokenType == Token::Type::BuiltinType)
+				ret.push_back(' ');
+			else if (nextToken && nextToken->TokenType == Token::Type::Void)
+				ret.push_back(' ');
+
+		}
 	}
-	return data;
+	return ret;
 }
+
+std::string ASTType::ToTemplateArgumentsString()
+{
+	std::string ret;
+	if (ndTemplateArgumentList)
+	{
+		if (ret.size() > 0 && ret.back() == ' ')
+			ret.pop_back(); // remove trailing space
+
+		auto& children = ndTemplateArgumentList->Children();
+		ret += "<";
+		for (auto& it : children)
+		{
+			ret += it->ToString();
+			if (it != children.back())
+				ret += ", ";
+		}
+		ret += "> ";
+	}
+	return ret;
+}
+
+std::string ASTType::ToArrayTokensString()
+{
+	std::string ret;
+	for (auto& it : typeArrayTokens)
+	{
+		ret.push_back('[');
+		for (auto& it2 : it)
+			ret.append(tokenSource->Tokens[it2].TokenData);
+		ret.push_back(']');
+	}
+	return ret;
+}
+
+std::string ASTType::ToPointerIdentifierScopedString()
+{
+	std::string ret;
+	for (auto& it : typeIdentifierScopedPointers)
+		ret += it.ToString() + " ";
+	if (ret.size() > 0)
+		ret.pop_back(); // remove trailing space
+	return ret;
+}
+
+std::string ASTType::ToIdentifierString()
+{
+	std::string ret;
+	for (auto& it : typeIdentifier)
+		ret += tokenSource->Tokens[it].TokenData;
+	return ret;
+}
+
+std::string ASTType::ToBitfieldString()
+{
+	std::string ret;
+	for (auto& it : typeBitfieldTokens)
+		ret += tokenSource->Tokens[it].TokenData + " ";
+	if (ret.size() > 0)
+		ret.pop_back(); // remove trailing space
+	return ret;
+}
+
+std::string ASTType::ToOperatorString()
+{
+	std::string ret;
+	for (auto& it : typeOperatorTokens)
+		ret += tokenSource->Tokens[it].TokenData;
+	return ret;
+}
+
+std::string ASTType::ToArgumentsString()
+{
+	std::string ret;
+	ASTNode* args = 0;
+	if (args == 0 && ndFuncArgumentList)
+		args = ndFuncArgumentList;
+	if (args == 0 && ndFuncPointerArgumentList)
+		args = ndFuncPointerArgumentList;
+	if (args)
+	{
+		auto& children = args->Children();
+		ret += "(";
+		for (auto& it : children)
+		{
+			ASTType* t = dynamic_cast<ASTType*>(it);
+			if (t == 0)
+			{
+				if (it->GetType() == "DCL_VARARGS")
+					ret += "...";
+				continue; // skip non-types
+			}
+
+			ret += t->ToString();
+			if (it != children.back())
+				ret += ", ";
+		}
+		ret += ")";
+	}
+	return ret;
+}
+
+std::string ASTType::ToPointersString()
+{
+	std::string ret;
+	for (auto& it : typePointers)
+		ret += it.ToString() + " ";
+
+	// remove trailing space
+	if (ret.size() > 0)
+		ret.pop_back();
+	return ret;
+}
+
 
 
 std::string ASTTokenNode::ToString()
@@ -225,3 +333,14 @@ std::string ASTTokenNode::ToString()
 	return ret;
 }
 
+
+std::string ASTDataNode::ToString()
+{
+	std::string ret;
+	for (auto it : data)
+	{
+		ret += it;
+		ret += " ";
+	}
+	return ret;
+}

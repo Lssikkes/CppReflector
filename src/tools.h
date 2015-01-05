@@ -13,7 +13,23 @@
 
 namespace tools
 {
+#pragma region String Helpers
+	static std::string readFromFile(std::string filename)
+	{
+		std::ifstream ifs(filename);
+		std::string content((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
+		return content;
+	}
 
+	static void appendSpaceIfNeeded(std::string& v)
+	{
+		if (v.size() == 0)
+			return;
+		if (v.back() == '\t' || v.back() == ' ')
+			return;
+		v.push_back(' ');
+	}
+#pragma endregion
 #pragma region CRC32
 	extern unsigned int crc32_tab[];
 
@@ -81,13 +97,6 @@ namespace tools
 	static unsigned long crc32String(const char* data)
 	{
 		return crc32String(data, strlen(data));
-	}
-
-	static std::string readFromFile(std::string filename)
-	{
-		std::ifstream ifs(filename);
-		std::string content( (std::istreambuf_iterator<char>(ifs) ), ( std::istreambuf_iterator<char>() ) );
-		return content;
 	}
 #pragma endregion
 

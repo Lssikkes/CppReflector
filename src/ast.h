@@ -18,37 +18,39 @@ public:
 	ASTNode() { parent = 0; }
 	virtual ~ASTNode() { DestroyChildren(); }
 
-	void DestroyChildren() { for (auto it : m_children) { it->DestroyChildren(); delete it; } m_children.clear(); }
+	void DestroyChildren();
 	void DestroyChildrenAndSelf() { DestroyChildren(); delete this; }
 	void ClearChildrenWithoutDestruction() { m_children.clear(); }
 
-	void AddNode(ASTNode* node) { node->parent = this; m_children.push_back(node); }
-	void AddNodes(const std::vector<ASTNode*>& nodes) { for (auto it : nodes) it->parent = this; m_children.insert(m_children.end(), nodes.begin(), nodes.end()); }
-	void StealNodesFrom(ASTNode* node) { AddNodes(node->Children()); node->m_children.clear(); }
+	void AddNode(ASTNode* node) { node->parent = this; node->parentIndex = m_children.size(); m_children.push_back(node); }
+	void AddNodes(const std::vector<ASTNode*>& nodes) { for (auto it : nodes) AddNode(it); }
+	void StealNodesFrom(ASTNode* node);
 	const std::vector<ASTNode*>& Children() const { return m_children; }
-	std::vector<ASTNode*> GatherAllChildren() const;
+	std::vector<ASTNode*> GatherChildrenRecursively() const;
 
-	virtual const std::string& GetType() const { return type; }
-	virtual const std::vector<std::string>& GetData() { return data; }
+	virtual const std::string& GetType() const;
+
 	ASTNode* GetParent() const { return parent; }
+	ASTNode* GetNextSibling() const;
+	ASTNode* GetPreviousSibling() const;
 	
 	void SetType(const std::string& a_type) { type = a_type; }
-	void AddData(const std::string& a_dataValue) { data.push_back(a_dataValue); }
+
+	void RebuildParentIndices();
 
 	virtual std::string ToString() { return ""; }
 protected:
 	friend class ASTParser;
 	std::string type;
-	std::vector<std::string> data;
 	
 	ASTNode* parent;
+	size_t parentIndex = -1;
 	std::vector<ASTNode*> m_children;
 private:
 	
-	
-	
-
 };
+
+
 
 class ASTPointerType
 {
@@ -66,6 +68,16 @@ public:
 	std::string ToString();
 };
 
+class ASTDataNode : public ASTNode
+{
+public:
+	void AddData(const std::string& a_dataValue) { data.push_back(a_dataValue); }
+	const std::vector<std::string>& Data() const { return data; }
+	virtual std::string ToString();
+protected:
+	friend class ASTParser;
+	std::vector<std::string> data;
+};
 
 class ASTTokenNode : public ASTNode
 {
@@ -73,7 +85,6 @@ public:
 	ASTTokenNode(ASTTokenSource* src) : tokenSource(src) { }
 	ASTTokenSource* tokenSource;
 	std::vector<ASTTokenIndex> Tokens;
-	virtual const std::vector<std::string>& GetData();
 	virtual std::string ToString();
 };
 
@@ -101,8 +112,20 @@ public:
 	
 	std::vector<int> typeFunctionPointerArgumentIndices;
 
-	virtual const std::vector<std::string>& GetData();
 	virtual std::string ToString();
+
+	std::string ToPointersString();
+
+	std::string ToArgumentsString();
+	std::string ToOperatorString();
+	std::string ToBitfieldString();
+	std::string ToIdentifierString();
+	std::string ToTemplateArgumentsString();
+	std::string ToPointerIdentifierScopedString();
+	std::string ToNameString();
+	std::string ToModifiersString();
+	std::string ToArrayTokensString();
+
 	virtual const std::string& GetType() const;
 	void MergeData(ASTType* other);
 };

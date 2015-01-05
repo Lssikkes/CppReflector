@@ -17,6 +17,8 @@ struct Token
 		Newline, // \r|\n|\r\n
 		CommentSingleLine,
 		CommentMultiLine,
+		AnnotationForwardStart, //@[
+		AnnotationBackStart, //@<[
 		LBracket, // [
 		RBracket, // ]
 		LBrace, // {
@@ -118,6 +120,8 @@ public:
 	};
 	Token GetNextToken();
 	void Debug();
+
+	bool WithAnnotations = true;
 protected:
 	Tokenizer(): m_offset(0) {}
 
@@ -136,6 +140,8 @@ protected:
 	int IsCombinableWith(Token& tok, Token& nextToken);
 	void ConvertToSpecializedKeyword(Token& tokKeyword);
 	size_t m_offset;
+
+	
 };
 
 class StringTokenizer: public Tokenizer

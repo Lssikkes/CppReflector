@@ -9,7 +9,7 @@ public:
 	{
 		fprintf(stderr, "********************* PRINT TYPES ***********************\n");
 
-		auto allChildren = rootNode->GatherAllChildren();
+		auto allChildren = rootNode->GatherChildrenRecursively();
 		auto typeChildren = tools::LINQSelect(allChildren, [](ASTNode* it) { return dynamic_cast<ASTType*>(it) != 0; });
 		
 		for (auto& it : typeChildren)

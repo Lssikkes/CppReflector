@@ -62,7 +62,7 @@ protected:
 	bool ParseClassInheritance(int &inheritancePublicPrivateProtected, ASTNode* parent, ASTPosition& position);
 	bool ParsePrivatePublicProtected(int& privatePublicProtected, ASTPosition& cposition );
 	bool ParsePreprocessor(ASTNode* parent, ASTPosition& position);
-	bool ParseConstructorInitializer(ASTNode* parent, ASTPosition& cposition);
+	bool ParseConstructorInitializer(ASTType* parent, ASTPosition& cposition);
 	bool ParseOperatorType(ASTNode* parent, ASTPosition& cposition, std::vector<ASTTokenIndex>& ctokens);
 	bool ParseDeclaration(ASTNode* parent, ASTPosition& cposition, ASTDeclarationParsingOptions opts);
 	bool _ParseDeclaration_HeadSubs(ASTPosition &position, ASTNode* parent, std::unique_ptr<ASTType> &headType, size_t &lastSubID, ASTDeclarationParsingOptions opts);
@@ -89,10 +89,10 @@ protected:
 	bool ParseIgnored(ASTNode* parent, ASTPosition& position);
 	bool ParseEndOfStream(ASTNode* parent, ASTPosition& position);
 	
-
 	bool ParseDeclarationSubArguments(ASTPosition &position, ASTNode* parent);
 	bool ParseDeclarationSubArgumentsScoped(ASTPosition &position, ASTNode* parent, Token::Type leftScope, Token::Type rightScope);
 	bool ParseDeclarationSubArgumentsScopedWithNonTypes(ASTPosition &cposition, ASTNode* parent, Token::Type leftScope, Token::Type rightScope);
 
-
+	bool ParseExtensionAnnotation(ASTNode* parent, ASTPosition& cposition);
+	bool ParseExtensionAnnotationContent(ASTTokenNode* ndAnnotationRoot, ASTPosition &position);
 };

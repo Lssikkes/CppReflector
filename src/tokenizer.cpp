@@ -117,15 +117,29 @@ Token Tokenizer::PeekNextToken(size_t& offset)
 		}
 		else if(next == "/")
 		{
-			token.TokenType = Token::Type::CommentSingleLine;
-
 			offset = AddPart(token, next, offset);
-
-			auto next = PeekBytes(1, offset);
-			while(next.size() > 0 && next.at(0) != '\n' && next.at(0) != '\r' )
+			auto annotationPrefix = PeekBytes(2, offset);
+			if (WithAnnotations && annotationPrefix == "@[")
 			{
-				offset = AddPart(token, next, offset); // add part
-				next = PeekBytes(1, offset);
+				token.TokenType = Token::Type::AnnotationForwardStart;
+				offset = AddPart(token, annotationPrefix, offset);
+			}
+			else if (WithAnnotations && annotationPrefix == "@<" && PeekBytes(1, offset + 2) == "[")
+			{
+				annotationPrefix = PeekBytes(3, offset);
+				token.TokenType = Token::Type::AnnotationBackStart;
+				offset = AddPart(token, annotationPrefix, offset);
+			}
+			else
+			{
+				token.TokenType = Token::Type::CommentSingleLine;
+
+				auto next = PeekBytes(1, offset);
+				while (next.size() > 0 && next.at(0) != '\n' && next.at(0) != '\r')
+				{
+					offset = AddPart(token, next, offset); // add part
+					next = PeekBytes(1, offset);
+				}
 			}
 		}
 		else 
