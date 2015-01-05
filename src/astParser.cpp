@@ -762,7 +762,7 @@ bool ASTParser::ParseIgnored( ASTNode* parent, ASTPosition& position )
 bool ASTParser::ParseUnknown( ASTNode* parent, ASTPosition& position )
 {
 	if (Verbose)
-		fprintf(stderr, "[PARSER] no grammar match for token: %d (type: %d, line: %d): %s\n", position.Position, position.GetToken().TokenType, position.GetToken().TokenLine, position.GetToken().TokenData.c_str());
+		fprintf(stderr, "[PARSER] no grammar match for token: %d (type: %d, line: %d): %s\n", static_cast<int>(position.Position), position.GetToken().TokenType, static_cast<int>(position.GetToken().TokenLine), position.GetToken().TokenData.c_str());
 	position.Increment();
 	return false;
 }
