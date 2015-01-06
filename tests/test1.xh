@@ -1,30 +1,31 @@
 ﻿//@[Serializable]
 template <class T>
-class Array
+class TestArray
 {
-	Array(int size) { m_size = size; m_elements = new T[size]; }
+	TestArray(int size) { m_size = size; m_elements = new T[size]; }
 	int size() const { return m_size; }
 	operator T*() { return m_elements; }
 	operator const T*() const { return m_elements; }
 	T& operator [](size_t index) { return m_elements[index]; }
 	const T& operator [](size_t index) const { return m_elements[index]; }
 protected:
-	T* m_elements; //@<[ArraySize:size()]
+	T* m_elements; //@<[ArraySize(size())]
 	int m_size;
 };
 
 //@[Serializable]
-//@[MemoryManagement:"ReferenceCount"]
-//@[Description:"Test Annotations"]
-//@[Triplet:a,b,c]
+//@[MemoryManagement("ReferenceCount")]
+//@[Description("Test Annotations")]
+//@[Triplet(a,b,c)]
+//@[MultiLineA1, MultiLineA2]
 //@[MultiLine1] //@[MultiLine2]
 class TestAnnotations
 {
-	int m_Integer; 
-	Array<int> m_Integers;
+	int m_Integer; //@<[Serializable, Bla] 
+	TestArray<int> m_Integers;
 
 	Texture* m_Texture;
-	Array<Texture> m_Textures;
+	TestArray<Texture> m_Textures;
 };
 
 class TestBitField
@@ -73,47 +74,6 @@ enum
 	Enumeration=20
 };
 
-class CBase
-{
-	private:
-
-		int                        iMoo;
-
-		union
-		{
-			long long          llSqueak;
-
-			struct
-			{
-				void            *pvMeow;
-				long              lBark;
-			};
-		};
-
-		struct
-		{
-			char               *pcChirp;
-		};
-};
-
-class CDerived : private CBase
-{
-	friend class CFriend;
-};
-
-class CFriend
-{
-	public:
-
-		void fnFriend( CDerived &rD )
-		{
-			rD.iMoo;		// cannot access private member declared in class 'CBase'
-			rD.pvMeow;      // WHY THE FRELL DOES THIS COMPILE?
-			rD.lBark;       // WHY THE FRELL DOES THIS COMPILE?
-			rD.pcChirp;     // cannot access private member declared in class 'CBase'
-			rD.llSqueak;    // cannot access private member declared in class 'CBase'
-		}
-};
 enum TestEnum
 {
 	Bla = 10,
@@ -141,11 +101,12 @@ public:
 
 
 // TestStrangeDefinitions
-class TestTypedef __ttypedef;
-struct TestTypedef __ttypedef2;
-union TestTypedef __ttypedef3;
-
-int myTestFunc();
+namespace TestStrangeDefinitions
+{
+	class TestTypedef __ttypedef;
+	struct TestTypedef __ttypedef2;
+	union TestTypedef __ttypedef3;
+}
 
 class TestClassWithInstances
 {
@@ -263,8 +224,8 @@ protected:
 };
 class TestFunctionPointer
 {
-	void (*fpointer)();
-	void Increment(int count=1, bool (*filterAllows)(Token& token)=&FilterWhitespaceComments);
+	void (*FunctionPointer)();
+	void FunctionWithFunctionPointer(int count=1, bool (*filterAllows)(Token& token)=&FilterWhitespaceComments);
 };
 
 class TestSimpleFunctionsDirectInlineFunctions

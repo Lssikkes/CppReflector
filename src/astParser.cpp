@@ -121,7 +121,7 @@ bool ASTParser::Parse( ASTNode* parent, ASTPosition& position)
 		if (ParseEndOfStream(parent, position))
 			break;
 
-		if (ParseRoot(parent, position))
+		if (ParseRootParticle(parent, position))
 			continue;
 
 		ParseUnknown(parent, position);
@@ -130,7 +130,7 @@ bool ASTParser::Parse( ASTNode* parent, ASTPosition& position)
 	return true;
 }
 
-bool ASTParser::ParseRoot( ASTNode* parent, ASTPosition& position )
+bool ASTParser::ParseRootParticle( ASTNode* parent, ASTPosition& position )
 {
 	// in root scope bit fields are disallowed, but copy constructors are not.
 	static ASTDeclarationParsingOptions declOpts(true, false, true);
@@ -184,6 +184,60 @@ bool ASTParser::ParseRoot( ASTNode* parent, ASTPosition& position )
 
 	return false;
 }
+
+
+int ASTParser::ParseClassParticle(int privatePublicProtected, ASTPosition &position, ASTDataNode*& currentScope, std::unique_ptr<ASTDataNode> &subNode, ASTNode* parent)
+{
+	static ASTDeclarationParsingOptions declOpts(false, true, true);
+	if (ParsePrivatePublicProtected(privatePublicProtected, position))
+	{
+		// new scope
+		currentScope = new ASTDataNode();
+		if (privatePublicProtected == 0)
+			currentScope->type = "PRIVATE";
+		if (privatePublicProtected == 1)
+			currentScope->type = "PUBLIC";
+		if (privatePublicProtected == 2)
+			currentScope->type = "PROTECTED";
+		currentScope->data.push_back("subsequent");
+		subNode->AddNode(currentScope);
+	}
+	else if (ParseExtensionAnnotation(currentScope, position)) {}
+	else if (ParseTemplate(currentScope, position)) {}	// subclass
+	else if (ParseTypedef(currentScope, position)) {}	// typedef
+	else if (ParseFriend(subNode.get(), position)) {}	// friend
+	else if (ParseClass(currentScope, position)) {}		// subclass
+	else if (ParseDeclaration(currentScope, position, declOpts)) {}
+	else if (ParseEnum(currentScope, position)) {}		// sub enum
+	else if (ParsePreprocessor(parent, position)) {}
+	else if (position.GetToken().TokenType == Token::Type::Semicolon)
+		position.Increment(); // skip stray semicolons
+	else if (position.GetToken().TokenType == Token::Type::RBrace)
+		return 2; // end of class
+	else if (position.GetToken().TokenType == Token::Type::LBrace)
+	{
+		// unknown scope found
+		std::vector<ASTTokenIndex> tokens;
+		ParseSpecificScopeInner(position, tokens, Token::Type::LBrace, Token::Type::RBrace, ASTPosition::FilterNone);
+		if (Verbose)
+			fprintf(stderr, "[PARSER] discarding unknown scope in class/struct: %s", CombineTokens(this, tokens, "").c_str());
+	}
+	else if (position.GetToken().TokenType == Token::Type::EndOfStream)
+	{
+
+		if (Verbose)
+			fprintf(stderr, "[PARSER] end of stream reached during class parse - something is wrong\n");
+		return 2; // end of class
+	}
+
+	else
+	{
+		ParseUnknown(currentScope, position);
+		return 1; // unknown particle
+	}
+	return 0; // everything went fine
+}
+
 
 bool ASTParser::ParseClass(ASTNode* parent, ASTPosition& cposition)
 {
@@ -281,56 +335,19 @@ bool ASTParser::ParseClass(ASTNode* parent, ASTPosition& cposition)
 	position.Increment();
 
 	// in class scope bit fields are allowed, but copy constructors are not.
-	static ASTDeclarationParsingOptions declOpts(false, true, true);
-
 	while (true)
 	{
-		if (ParsePrivatePublicProtected(privatePublicProtected, position))
+		int res=ParseClassParticle(privatePublicProtected, position, currentScope, subNode, parent);
+		if (res == 0 || res == 1) 
 		{
-			// new scope
-			currentScope = new ASTDataNode();
-			if (privatePublicProtected == 0)
-				currentScope->type = "PRIVATE";
-			if (privatePublicProtected == 1)
-				currentScope->type = "PUBLIC";
-			if (privatePublicProtected == 2)
-				currentScope->type = "PROTECTED";
-			currentScope->data.push_back("subsequent");
-			subNode->AddNode(currentScope);
+			// everything went fine
 		}
-		else if (ParseExtensionAnnotation(currentScope, position)) {}
-		else if (ParseTemplate(currentScope, position)) {}	// subclass
-		else if (ParseTypedef(currentScope, position)) {}	// typedef
-		else if (ParseFriend(subNode.get(), position)) {}	// friend
-		else if (ParseClass(currentScope, position)) {}		// subclass
-		else if (ParseDeclaration(currentScope, position, declOpts)) {}
-		else if (ParseEnum(currentScope, position)) {}		// sub enum
-		else if (ParsePreprocessor(parent, position)) {  }
-		else if (position.GetToken().TokenType == Token::Type::Semicolon)
-			position.Increment(); // skip stray semicolons
-		else if (position.GetToken().TokenType == Token::Type::RBrace)
-			break;
-		else if (position.GetToken().TokenType == Token::Type::LBrace)
+		else if (res == 2) 
 		{
-			// unknown scope found
-			std::vector<ASTTokenIndex> tokens;
-			ParseSpecificScopeInner(position, tokens, Token::Type::LBrace, Token::Type::RBrace, ASTPosition::FilterNone);
-			if (Verbose)
-				fprintf(stderr, "[PARSER] discarding unknown scope in class/struct: %s", CombineTokens(this, tokens, "").c_str());
-		}
-		else if (position.GetToken().TokenType == Token::Type::EndOfStream)
-		{
-		
-			if (Verbose)
-				fprintf(stderr, "[PARSER] end of stream reached during class parse - something is wrong\n");
+			// we're at the end
 			break;
 		}
-			
-		else
-		{
-			
-			ParseUnknown(currentScope, position);
-		}
+
 	}
 
 	// parse instances
@@ -491,7 +508,7 @@ bool ASTParser::ParseNamespace(ASTNode* parent, ASTPosition& cposition)
 		if (ParseEndOfStream(subNode.get() , position))
 			return false; // should not reach end of file
 
-		if (ParseRoot(subNode.get(), position))
+		if (ParseRootParticle(subNode.get(), position))
 			continue;
 
 		if (position.GetToken().TokenType == Token::Type::RBrace)
@@ -610,7 +627,7 @@ bool ASTParser::ParseTypedef(ASTNode* parent, ASTPosition& cposition)
 		// typedef HEAD SUB,SUB,SUB;
 
 		std::unique_ptr<ASTType> subType(new ASTType(this));
-		subType->type = "DCL_HEAD";
+		subType->type = "TYPEDEF_HEAD";
 		// parse HEAD
 		if (ParseDeclarationHead(parent, position, subType.get(), opts) == false)
 			return false;
@@ -619,7 +636,7 @@ bool ASTParser::ParseTypedef(ASTNode* parent, ASTPosition& cposition)
 		while (true)
 		{
 			std::unique_ptr<ASTType> subType2(new ASTType(this));
-			subType2->type = "DCL_SUB";
+			subType2->type = "TYPEDEF_SUB";
 			if (ParseDeclarationSub(parent, position, subType2.get(), subType.get(), opts) == false)
 				return false;
 
@@ -814,7 +831,7 @@ bool ASTParser::ParseClassInheritance(int &inheritancePublicPrivateProtected, AS
 	ASTDeclarationParsingOptions opts;
 	if (ParseDeclarationHead(subNode.get(), position, subType.get(), opts) == false)
 		return false;
-	subType->type = "DCL_INHERIT";
+	subType->type = "INHERIT_FROM";
 	subNode->AddNode(subType.release());
 
 	// create subnode
@@ -1742,7 +1759,7 @@ void ASTParser::ParseBOM(ASTPosition &position)
 	// check for byte order marks
 	if (position.GetToken().TokenType == Token::Type::BOM_UTF8)
 	{
-		fprintf(stderr, "[PARSER] File contains UTF-8 BOM.\n");
+		fprintf(stderr, "[PARSER] File contains UTF-8 byte order mark.\n");
 		IsUTF8 = true;
 		position.Increment();
 	}
@@ -1786,15 +1803,35 @@ bool ASTParser::ParseExtensionAnnotation(ASTNode* parent, ASTPosition& cposition
 	if (annotationType == Token::Type::AnnotationForwardStart || annotationType == Token::Type::AnnotationBackStart)
 	{
 		position.Increment();
-		std::unique_ptr<ASTTokenNode> ndAnnotationRoot(new ASTTokenNode(this));
-		if (annotationType == Token::Type::AnnotationForwardStart)
-			ndAnnotationRoot->type = "ANNOTATION_FWD";
-		else 
-			ndAnnotationRoot->type = "ANNOTATION_BACK";
-		if (ParseExtensionAnnotationContent(ndAnnotationRoot.get(), position) == false)
+
+		while (true)
+		{
+			std::unique_ptr<ASTTokenNode> ndAnnotationRoot(new ASTTokenNode(this));
+
+			if (annotationType == Token::Type::AnnotationForwardStart)
+				ndAnnotationRoot->type = "ANNOTATION_FWD";
+			else
+				ndAnnotationRoot->type = "ANNOTATION_BACK";
+
+			if (ParseExtensionAnnotationContent(ndAnnotationRoot.get(), position) == false)
+				return false;
+
+			// add to root
+			parent->AddNode(ndAnnotationRoot.release());
+
+			if (position.GetToken().TokenType == Token::Type::Comma)
+			{
+				// another annotation incoming 
+				position.Increment();
+				continue;
+			}
+			break;
+		}
+
+		if (position.GetToken().TokenType != Token::Type::RBracket)
 			return false;
 
-		parent->AddNode(ndAnnotationRoot.release());
+		
 	}
 	else
 		return false;
@@ -1803,9 +1840,12 @@ bool ASTParser::ParseExtensionAnnotation(ASTNode* parent, ASTPosition& cposition
 	return true;
 }
 
-bool ASTParser::ParseExtensionAnnotationContent(ASTTokenNode* ndAnnotationRoot, ASTPosition &position)
+bool ASTParser::ParseExtensionAnnotationContent(ASTTokenNode* ndAnnotationRoot, ASTPosition &cposition)
 {
-	Token::Type annotationTerminator = Token::Type::RBracket;
+	ASTPosition position = cposition;
+	Token::Type annotationArgScopeOpen = Token::Type::LParen;
+	Token::Type annotationArgScopeClose = Token::Type::RParen;
+
 	if (position.GetToken().TokenType != Token::Type::Keyword)
 		return false;
 
@@ -1813,21 +1853,20 @@ bool ASTParser::ParseExtensionAnnotationContent(ASTTokenNode* ndAnnotationRoot, 
 	ndAnnotationRoot->Tokens.push_back(position.GetTokenIndex());
 	position.Increment();
 
-	if (position.GetToken().TokenType == Token::Type::Colon)
+	if (position.GetToken().TokenType == annotationArgScopeOpen)
 	{
 		position.Increment();
 
 		// parse arguments
 		std::unique_ptr<ASTNode> ndAnnotationArguments(new ASTNode());
 		ndAnnotationArguments->type = "ANT_ARGS";
-		
 
 		while (true)
 		{
 			std::unique_ptr<ASTTokenNode> ndAnnotationArgument(new ASTTokenNode(this));
 			ndAnnotationArgument->type = "ANT_ARG";
 
-			ParseToArray_ScopeAware(ndAnnotationArgument->Tokens, position, [annotationTerminator](ASTPosition& p) { return p.GetToken().TokenType != Token::Type::Comma && p.GetToken().TokenType != annotationTerminator; });
+			ParseToArray_ScopeAware(ndAnnotationArgument->Tokens, position, [annotationArgScopeClose](ASTPosition& p) { return p.GetToken().TokenType != Token::Type::Comma && p.GetToken().TokenType != annotationArgScopeClose; });
 			
 			// add to list
 			ndAnnotationArguments->AddNode(ndAnnotationArgument.release());
@@ -1841,13 +1880,15 @@ bool ASTParser::ParseExtensionAnnotationContent(ASTTokenNode* ndAnnotationRoot, 
 
 		// add to annotation root
 		ndAnnotationRoot->AddNode(ndAnnotationArguments.release());
+
+		// we should be at annotation terminator now
+		if (position.GetToken().TokenType != annotationArgScopeClose)
+			return false;
+
+		position.Increment();
 	}
 
-	// we should be at annotation terminator now
-	if (position.GetToken().TokenType != annotationTerminator)
-		return false;
-
-	position.Increment(); // skip annotation terminator
+	cposition = position;
 	return true;
 }
 

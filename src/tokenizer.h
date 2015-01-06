@@ -89,7 +89,7 @@ struct Token
 		Void, // void
 		BuiltinType, // int64|int|short|char|long|double|float|bool
 		Unknown, // <everything else>
-		EndOfStream, // 0 bytes remaining
+		EndOfStream, // <EOF>
 		BOM_UTF8, // 0xEF,0xBB,0xBF
 	};
 	Token(): TokenType(Type::Init) {}

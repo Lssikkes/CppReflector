@@ -44,11 +44,11 @@ public:
 	bool Verbose = false;
 	bool IsUTF8 = false;
 
+	ASTNode ForwardAnnotationStack;
+
 	bool Parse(ASTNode* parent, ASTPosition& position);
-
-
 protected:
-	bool ParseRoot(ASTNode* parent, ASTPosition& position);
+	bool ParseRootParticle(ASTNode* parent, ASTPosition& position);
 	void ParseBOM(ASTPosition &position);
 
 	bool ParseTemplate( ASTNode* parent, ASTPosition& position);
@@ -59,6 +59,9 @@ protected:
 	bool ParseEnum(ASTNode* parent, ASTPosition& position);
 	bool ParseEnumDefinition(ASTNode* parent, ASTPosition& position);
 	bool ParseClass(ASTNode* parent, ASTPosition& position);
+
+	int ParseClassParticle(int privatePublicProtected, ASTPosition &position, ASTDataNode*& currentScope, std::unique_ptr<ASTDataNode> &subNode, ASTNode* parent);
+
 	bool ParseClassInheritance(int &inheritancePublicPrivateProtected, ASTNode* parent, ASTPosition& position);
 	bool ParsePrivatePublicProtected(int& privatePublicProtected, ASTPosition& cposition );
 	bool ParsePreprocessor(ASTNode* parent, ASTPosition& position);

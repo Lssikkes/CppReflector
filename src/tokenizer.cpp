@@ -316,8 +316,9 @@ namespace
 			grTokenTypes[tools::crc32String("namespace")] = Token::Type::Namespace;
 			grTokenTypes[tools::crc32String("using")] = Token::Type::Using;
 			grTokenTypes[tools::crc32String("friend")] = Token::Type::Friend;
-			grTokenTypes[tools::crc32String("__forceinline")] = Token::Type::MSVCForceInline;
 			grTokenTypes[tools::crc32String("restrict")] = Token::Type::Restrict;
+			grTokenTypes[tools::crc32String("throw")] = Token::Type::Throw;
+			grTokenTypes[tools::crc32String("__forceinline")] = Token::Type::MSVCForceInline;
 			grTokenTypes[tools::crc32String("__thread")] = Token::Type::Thread;
 			grTokenTypes[tools::crc32String("__inline")] = Token::Type::Inline;
 			grTokenTypes[tools::crc32String("__asm__")] = Token::Type::GCCAssembly;
@@ -326,7 +327,6 @@ namespace
 			grTokenTypes[tools::crc32String("__restrict")] = Token::Type::MSVCRestrict;
 			grTokenTypes[tools::crc32String("__restrict__")] = Token::Type::GCCRestrict;
 			grTokenTypes[tools::crc32String("__extension__")] = Token::Type::GCCExtension;
-			grTokenTypes[tools::crc32String("throw")] = Token::Type::Throw;
 		}
 	} gTokenInitializer;
 }

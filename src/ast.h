@@ -88,7 +88,6 @@ public:
 	virtual std::string ToString();
 };
 
-//@[Serializable]
 class ASTType : public ASTNode
 {
 public:
@@ -115,7 +114,6 @@ public:
 	virtual std::string ToString();
 
 	std::string ToPointersString();
-
 	std::string ToArgumentsString();
 	std::string ToOperatorString();
 	std::string ToBitfieldString();
