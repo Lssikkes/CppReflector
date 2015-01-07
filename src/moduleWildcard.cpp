@@ -12,6 +12,7 @@ public:
 	{
 		std::vector<std::string> wc_list;
 
+		fprintf(stderr, "********************* WILDCARD ***********************\n");
 		int i = 0;
 		while (i < cmdOpts.names.size())
 		{
@@ -20,7 +21,7 @@ public:
 			bool recurse = false;
 
 			// check if one of these has a * in it.
-			if (cmdOpts.names[i].find("*"))
+			if (cmdOpts.names[i].find("*") != std::string::npos)
 			{
 				// parse this entry  1* == non-recursive
 				unsigned int wp = cmdOpts.names[i].rfind("*.");
@@ -28,7 +29,7 @@ public:
 
 				// check if recurse				
 				unsigned int prev = wp - 1;
-				if (prev > 0 && prev < cmdOpts.names[i].length())
+				if (prev >= 0 && prev < cmdOpts.names[i].length())
 					if (cmdOpts.names[i][prev] == '*')
 						recurse = true;			
 
@@ -36,7 +37,8 @@ public:
 				unsigned int sp = cmdOpts.names[i].rfind('/');
 				if (sp == std::string::npos)
 					sp = cmdOpts.names[i].rfind('\\');
-				path += cmdOpts.names[i].substr(0, sp+1);
+				if (sp != std::string::npos)
+					path += cmdOpts.names[i].substr(0, sp+1);
 
 				// remove this entry
 				cmdOpts.names.erase(cmdOpts.names.begin() + i);
