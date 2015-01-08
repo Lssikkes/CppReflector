@@ -50,16 +50,6 @@ void ASTNode::StealNodesFrom(ASTNode* node)
 	node->m_children.clear();
 }
 
-const std::string& ASTNode::GetType() const
-{
-	return type;
-}
-
-const std::string& ASTType::GetType() const
-{
-	return type;
-}
-
 std::string ASTPointerType::ToString()
 {
 	std::string ret;
@@ -297,7 +287,7 @@ std::string ASTType::ToArgumentsString()
 			ASTType* t = dynamic_cast<ASTType*>(it);
 			if (t == 0)
 			{
-				if (it->GetType() == "DCL_VARARGS")
+				if (it->GetTypeStr() == "DCL_VARARGS")
 					ret += "...";
 				continue; // skip non-types
 			}

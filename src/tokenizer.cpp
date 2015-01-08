@@ -270,6 +270,7 @@ Token Tokenizer::PeekNextToken(size_t& offset)
 }
 
 std::map<unsigned long, Token::Type> gTokenTypes;
+std::map<Token::Type, std::string> gTokenStrings;
 
 // static initialization to ensure this happens first
 namespace
@@ -279,55 +280,65 @@ namespace
 	public:
 		TokenInitializer()
 		{
-			std::map<unsigned long, Token::Type> &grTokenTypes = gTokenTypes;
-			grTokenTypes[tools::crc32String("true")] = Token::Type::True;
-			grTokenTypes[tools::crc32String("false")] = Token::Type::False;
-			grTokenTypes[tools::crc32String("public")] = Token::Type::Public;
-			grTokenTypes[tools::crc32String("protected")] = Token::Type::Protected;
-			grTokenTypes[tools::crc32String("private")] = Token::Type::Private;
-			grTokenTypes[tools::crc32String("class")] = Token::Type::Class;
-			grTokenTypes[tools::crc32String("struct")] = Token::Type::Struct;
-			grTokenTypes[tools::crc32String("union")] = Token::Type::Union;
-			grTokenTypes[tools::crc32String("const")] = Token::Type::Const;
-			grTokenTypes[tools::crc32String("unsigned")] = Token::Type::Unsigned;
-			grTokenTypes[tools::crc32String("signed")] = Token::Type::Signed;
-			grTokenTypes[tools::crc32String("null")] = Token::Type::Null;
-			grTokenTypes[tools::crc32String("void")] = Token::Type::Void;
-			grTokenTypes[tools::crc32String("__int64")] = Token::Type::BuiltinType;
-			grTokenTypes[tools::crc32String("bool")] = Token::Type::BuiltinType;
-			grTokenTypes[tools::crc32String("int")] = Token::Type::BuiltinType;
-			grTokenTypes[tools::crc32String("short")] = Token::Type::BuiltinType;
-			grTokenTypes[tools::crc32String("long")] = Token::Type::BuiltinType;
-			grTokenTypes[tools::crc32String("float")] = Token::Type::BuiltinType;
-			grTokenTypes[tools::crc32String("double")] = Token::Type::BuiltinType;
-			grTokenTypes[tools::crc32String("char")] = Token::Type::BuiltinType;
-			grTokenTypes[tools::crc32String("undefined")] = Token::Type::Undefined;
-			grTokenTypes[tools::crc32String("enum")] = Token::Type::Enum;
-			grTokenTypes[tools::crc32String("virtual")] = Token::Type::Virtual;
-			grTokenTypes[tools::crc32String("volatile")] = Token::Type::Volatile;
-			grTokenTypes[tools::crc32String("mutable")] = Token::Type::Mutable;
-			grTokenTypes[tools::crc32String("extern")] = Token::Type::Extern;
-			grTokenTypes[tools::crc32String("inline")] = Token::Type::Inline;
-			grTokenTypes[tools::crc32String("static")] = Token::Type::Static;
-			grTokenTypes[tools::crc32String("operator")] = Token::Type::Operator;
-			grTokenTypes[tools::crc32String("template")] = Token::Type::Template;
-			grTokenTypes[tools::crc32String("typedef")] = Token::Type::Typedef;
-			grTokenTypes[tools::crc32String("typename")] = Token::Type::Typename;
-			grTokenTypes[tools::crc32String("namespace")] = Token::Type::Namespace;
-			grTokenTypes[tools::crc32String("using")] = Token::Type::Using;
-			grTokenTypes[tools::crc32String("friend")] = Token::Type::Friend;
-			grTokenTypes[tools::crc32String("restrict")] = Token::Type::Restrict;
-			grTokenTypes[tools::crc32String("throw")] = Token::Type::Throw;
-			grTokenTypes[tools::crc32String("__forceinline")] = Token::Type::MSVCForceInline;
-			grTokenTypes[tools::crc32String("__thread")] = Token::Type::Thread;
-			grTokenTypes[tools::crc32String("__inline")] = Token::Type::Inline;
-			grTokenTypes[tools::crc32String("__asm__")] = Token::Type::GCCAssembly;
-			grTokenTypes[tools::crc32String("__declspec")] = Token::Type::MSVCDeclspec;
-			grTokenTypes[tools::crc32String("__attribute__")] = Token::Type::GCCAttribute;
-			grTokenTypes[tools::crc32String("__restrict")] = Token::Type::MSVCRestrict;
-			grTokenTypes[tools::crc32String("__restrict__")] = Token::Type::GCCRestrict;
-			grTokenTypes[tools::crc32String("__extension__")] = Token::Type::GCCExtension;
+			AddPair("true", Token::Type::True);
+			AddPair("false", Token::Type::False);
+			AddPair("public", Token::Type::Public);
+			AddPair("protected", Token::Type::Protected);
+			AddPair("private", Token::Type::Private);
+			AddPair("class", Token::Type::Class);
+			AddPair("struct", Token::Type::Struct);
+			AddPair("union", Token::Type::Union);
+			AddPair("const", Token::Type::Const);
+			AddPair("unsigned", Token::Type::Unsigned);
+			AddPair("signed", Token::Type::Signed);
+			AddPair("null", Token::Type::Null);
+			AddPair("nullptr", Token::Type::Nullptr);
+			AddPair("void", Token::Type::Void);
+			AddPair("__int64", Token::Type::BuiltinType);
+			AddPair("bool", Token::Type::BuiltinType);
+			AddPair("int", Token::Type::BuiltinType);
+			AddPair("short", Token::Type::BuiltinType);
+			AddPair("long", Token::Type::BuiltinType);
+			AddPair("float", Token::Type::BuiltinType);
+			AddPair("double", Token::Type::BuiltinType);
+			AddPair("char", Token::Type::BuiltinType);
+			AddPair("undefined", Token::Type::Undefined);
+			AddPair("enum", Token::Type::Enum);
+			AddPair("virtual", Token::Type::Virtual);
+			AddPair("volatile", Token::Type::Volatile);
+			AddPair("mutable", Token::Type::Mutable);
+			AddPair("extern", Token::Type::Extern);
+			AddPair("inline", Token::Type::Inline);
+			AddPair("static", Token::Type::Static);
+			AddPair("operator", Token::Type::Operator);
+			AddPair("template", Token::Type::Template);
+			AddPair("typedef", Token::Type::Typedef);
+			AddPair("typename", Token::Type::Typename);
+			AddPair("namespace", Token::Type::Namespace);
+			AddPair("using", Token::Type::Using);
+			AddPair("friend", Token::Type::Friend);
+			AddPair("restrict", Token::Type::Restrict);
+			AddPair("throw", Token::Type::Throw);
+			AddPair("__forceinline", Token::Type::MSVCForceInline);
+			AddPair("__thread", Token::Type::Thread);
+			AddPair("__inline", Token::Type::GCCInline);
+			AddPair("__asm__", Token::Type::GCCAssembly);
+			AddPair("__declspec", Token::Type::MSVCDeclspec);
+			AddPair("__attribute__", Token::Type::GCCAttribute);
+			AddPair("__restrict", Token::Type::MSVCRestrict);
+			AddPair("__restrict__", Token::Type::GCCRestrict);
+			AddPair("__extension__", Token::Type::GCCExtension);
 		}
+
+	private:
+		void AddPair(const std::string& inStr, Token::Type inType)
+		{
+			grTokenTypes[tools::crc32String(inStr)] = inType;
+			grTokenStrings[inType] = inStr;
+		}
+
+		std::map<unsigned long, Token::Type> &grTokenTypes = gTokenTypes;
+		std::map<Token::Type, std::string> &grTokenStrings = gTokenStrings;
 	} gTokenInitializer;
 }
 

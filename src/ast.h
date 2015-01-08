@@ -15,6 +15,63 @@ typedef size_t ASTTokenIndex;
 class ASTNode
 {
 public:
+	enum Type
+	{
+		Root,
+		File,
+		Instances,	// whats this
+
+		Public,
+		Private,
+		Protected,
+		Class,
+		Struct,
+		Union,
+		ClassFwdDcl,
+		StructFwdDcl,
+		UnionFwdDcl,
+		Template,
+		TemplateArgs,
+		TemplateArg,
+		TemplateArgDcl,
+		TemplateContent,
+		Namespace,
+		NamespaceUsing,
+		Using,
+		Friend,
+		VarType,	// Type
+		Typedef,
+		TypedefHead,
+		TypedefSub,
+		Enum,
+		EnumClass,
+		EnumDef,
+		Init,
+		Parent,
+		Inherit,
+		CInitFuncDcl,
+		CInitVar,
+		CInitSet,
+		FuncPtrArgDcl,
+		FuncDcl,
+		FuncArgDcl,
+		FuncModDcl,
+		Modifier,
+		CtorArgsDcl,
+		CtorArgDcl,
+		DclHead,
+		DclSub,
+		ArgDcl,
+		ArgNonTypeDcl,
+		VarArgDcl,
+		AntFwd,
+		AntBack,
+		AntArgs,
+		AntArg,
+
+		TypeCount
+	};
+
 	ASTNode() { parent = 0; }
 	virtual ~ASTNode() { DestroyChildren(); }
 
@@ -28,20 +85,21 @@ public:
 	const std::vector<ASTNode*>& Children() const { return m_children; }
 	std::vector<ASTNode*> GatherChildrenRecursively() const;
 
-	virtual const std::string& GetType() const;
+	virtual const std::string& GetTypeStr() const { return typeStr; }
+	virtual const ASTNode::Type GetType() const { return type; };
 
 	ASTNode* GetParent() const { return parent; }
 	ASTNode* GetNextSibling() const;
 	ASTNode* GetPreviousSibling() const;
 	
-	void SetType(const std::string& a_type) { type = a_type; }
+	void SetType(const std::string& inTypeStr, ASTNode::Type inType) { typeStr = inTypeStr; type = inType; }
 
 	void RebuildParentIndices();
 
 	virtual std::string ToString() { return ""; }
 protected:
-	friend class ASTParser;
-	std::string type;
+	std::string typeStr;
+	ASTNode::Type type;
 	
 	ASTNode* parent;
 	size_t parentIndex = -1;
@@ -91,7 +149,7 @@ public:
 class ASTType : public ASTNode
 {
 public:
-	ASTType(ASTTokenSource* src) : tokenSource(src) { type = "TYPE"; }
+	ASTType(ASTTokenSource* src) : tokenSource(src) { SetType("TYPE", ASTNode::Type::VarType); }
 	ASTTokenSource* tokenSource;
 	ASTType* head = 0;
 	
@@ -124,6 +182,5 @@ public:
 	std::string ToModifiersString();
 	std::string ToArrayTokensString();
 
-	virtual const std::string& GetType() const;
 	void MergeData(ASTType* other);
 };

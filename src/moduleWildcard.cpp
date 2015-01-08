@@ -13,7 +13,7 @@ public:
 		std::vector<std::string> wc_list;
 
 		fprintf(stderr, "********************* WILDCARD ***********************\n");
-		int i = 0;
+		unsigned int i = 0;
 		while (i < cmdOpts.names.size())
 		{
 			std::string ext;

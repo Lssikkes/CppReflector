@@ -47,7 +47,7 @@ public:
 			parser->Verbose = true;
 
 		std::unique_ptr<ASTDataNode> root(new ASTDataNode);
-		root->SetType("FILE");
+		root->SetType("FILE", ASTNode::Type::File);
 		root->AddData(opts.names[i]);
 
 		ASTParser::ASTPosition position(*parser.get());

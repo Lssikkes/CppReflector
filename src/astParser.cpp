@@ -194,11 +194,11 @@ int ASTParser::ParseClassParticle(int privatePublicProtected, ASTPosition &posit
 		// new scope
 		currentScope = new ASTDataNode();
 		if (privatePublicProtected == 0)
-			currentScope->type = "PRIVATE";
+			currentScope->SetType("PRIVATE", ASTNode::Type::Private);
 		if (privatePublicProtected == 1)
-			currentScope->type = "PUBLIC";
+			currentScope->SetType("PUBLIC", ASTNode::Type::Public);
 		if (privatePublicProtected == 2)
-			currentScope->type = "PROTECTED";
+			currentScope->SetType("PROTECTED", ASTNode::Type::Protected);
 		currentScope->data.push_back("subsequent");
 		subNode->AddNode(currentScope);
 	}
@@ -265,19 +265,19 @@ bool ASTParser::ParseClass(ASTNode* parent, ASTPosition& cposition)
 	bool isUnion = false;
 	if (position.GetToken().TokenType == Token::Type::Class)
 	{
-		subNode->type = "CLASS";
-		initialScopeNode->type = "PRIVATE";
+		subNode->SetType("CLASS", ASTNode::Type::Class);
+		initialScopeNode->SetType("PRIVATE", ASTNode::Type::Private);
 	}
 	else if (position.GetToken().TokenType == Token::Type::Struct)
 	{
-		subNode->type = "STRUCT";
-		initialScopeNode->type = "PUBLIC";
+		subNode->SetType("STRUCT", ASTNode::Type::Struct);
+		initialScopeNode->SetType("PUBLIC", ASTNode::Type::Public);
 		isStruct = true;
 	}
 	else if (position.GetToken().TokenType == Token::Type::Union)
 	{
-		subNode->type = "UNION";
-		initialScopeNode->type = "PUBLIC";
+		subNode->SetType("UNION", ASTNode::Type::Union);
+		initialScopeNode->SetType("PUBLIC", ASTNode::Type::Public);
 		isUnion = true;
 	}
 	else
@@ -315,11 +315,11 @@ bool ASTParser::ParseClass(ASTNode* parent, ASTPosition& cposition)
 	else if (position.GetToken().TokenType == Token::Type::Semicolon)
 	{
 		if (isUnion)
-			subNode->type = "UNION_FORWARD_DECLARATION";
+			subNode->SetType("UNION_FORWARD_DECLARATION", ASTNode::Type::UnionFwdDcl);
 		else if (isStruct)
-			subNode->type = "STRUCT_FORWARD_DECLARATION";
+			subNode->SetType("STRUCT_FORWARD_DECLARATION", ASTNode::Type::StructFwdDcl);
 		else
-			subNode->type = "CLASS_FORWARD_DECLARATION";
+			subNode->SetType("CLASS_FORWARD_DECLARATION", ASTNode::Type::ClassFwdDcl);
 		position.Increment();
 		parent->AddNode(subNode.release());
 		cposition = position;
@@ -357,11 +357,11 @@ bool ASTParser::ParseClass(ASTNode* parent, ASTPosition& cposition)
 		static ASTDeclarationParsingOptions instanceOpts(false, false, true);
 
 		std::unique_ptr<ASTNode> subNodeInstances(new ASTNode());
-		subNodeInstances->type = "INSTANCES";
+		subNodeInstances->SetType("INSTANCES", ASTNode::Type::Instances);
 		while (true)
 		{
 			std::unique_ptr<ASTType> subInstance(new ASTType(this));
-			subInstance->type = "DCL_SUB";
+			subInstance->SetType("DCL_SUB", ASTNode::Type::DclSub);
 			if (ParseDeclarationSub(subNodeInstances.get(), position, subInstance.get(), 0, instanceOpts) == false)
 				return false;
 
@@ -410,11 +410,11 @@ bool ASTParser::ParseTemplate(ASTNode* parent, ASTPosition& cposition)
 
 	// create template tree
 	std::unique_ptr<ASTNode> subNode(new ASTNode());
-	subNode->type = "TEMPLATE";
+	subNode->SetType("TEMPLATE", ASTNode::Type::Template);
 
 	// create arguments tree
 	std::unique_ptr<ASTNode> subNodeArgs(new ASTNode());
-	subNodeArgs->type = "TEMPLATE_ARGS";
+	subNodeArgs->SetType("TEMPLATE_ARGS", ASTNode::Type::TemplateArgs);
 
 	while (true)
 	{
@@ -426,7 +426,7 @@ bool ASTParser::ParseTemplate(ASTNode* parent, ASTPosition& cposition)
 			return false;
 
 		ParseDeclarationSub(parent, position, subType.get(), 0, opts);
-		subType->type = "TEMPLATE_ARG";
+		subType->SetType("TEMPLATE_ARG", ASTNode::Type::TemplateArg);
 		subNodeArgs->AddNode(subType.release());
 
 		if (position.GetToken().TokenType == Token::Type::Comma)
@@ -446,7 +446,7 @@ bool ASTParser::ParseTemplate(ASTNode* parent, ASTPosition& cposition)
 
 	// create arguments tree
 	std::unique_ptr<ASTNode> subNodeContent(new ASTNode());
-	subNodeContent->type = "TEMPLATE_CONTENT";
+	subNodeContent->SetType("TEMPLATE_CONTENT", ASTNode::Type::TemplateContent);
 
 	// in template scope bit fields are not allowed, neither are copy constructors.
 	static ASTDeclarationParsingOptions declOpts(false, false, true);
@@ -483,7 +483,7 @@ bool ASTParser::ParseNamespace(ASTNode* parent, ASTPosition& cposition)
 
 	// create namespace tree
 	std::unique_ptr<ASTDataNode> subNode(new ASTDataNode());
-	subNode->type = "NAMESPACE";
+	subNode->SetType("NAMESPACE", ASTNode::Type::Namespace);
 	if (position.GetToken().TokenType == Token::Type::Keyword)
 	{
 		subNode->data.push_back(position.GetToken().TokenData);
@@ -540,12 +540,12 @@ bool ASTParser::ParseUsing(ASTNode* parent, ASTPosition& cposition)
 	std::unique_ptr<ASTDataNode> subNode(new ASTDataNode());
 	if (position.GetNextToken().TokenType == Token::Type::Namespace)
 	{
-		subNode->type = "USING_NAMESPACE";
+		subNode->SetType("USING_NAMESPACE", ASTNode::Type::NamespaceUsing);
 		position.Increment();
 	}
 	else
 	{
-		subNode->type = "USING";
+		subNode->SetType("USING", ASTNode::Type::Using);
 	}
 
 	// check whether using <namespace> is followed by a keyword or a double colon.
@@ -584,7 +584,7 @@ bool ASTParser::ParseFriend(ASTNode* parent, ASTPosition& cposition)
 	position.Increment();
 	// create tree
 	std::unique_ptr<ASTType> subNode(new ASTType(this));
-	subNode->type = "FRIEND";
+	subNode->SetType("FRIEND", ASTNode::Type::Friend);
 
 	ASTDeclarationParsingOptions opts;
 	ParseDeclarationHead(subNode.get(), position, subNode.get(), opts);
@@ -610,7 +610,7 @@ bool ASTParser::ParseTypedef(ASTNode* parent, ASTPosition& cposition)
 
 	// create tree
 	std::unique_ptr<ASTNode> subNode(new ASTNode());
-	subNode->type = "TYPEDEF";
+	subNode->SetType("TYPEDEF", ASTNode::Type::Typedef);
 
 	bool skipHeadSub = false;
 	if (position.GetToken().TokenType == Token::Type::Struct || position.GetToken().TokenType == Token::Type::Class || position.GetToken().TokenType == Token::Type::Union)
@@ -627,7 +627,7 @@ bool ASTParser::ParseTypedef(ASTNode* parent, ASTPosition& cposition)
 		// typedef HEAD SUB,SUB,SUB;
 
 		std::unique_ptr<ASTType> subType(new ASTType(this));
-		subType->type = "TYPEDEF_HEAD";
+		subType->SetType("TYPEDEF_HEAD", ASTNode::Type::TypedefHead);
 		// parse HEAD
 		if (ParseDeclarationHead(parent, position, subType.get(), opts) == false)
 			return false;
@@ -636,7 +636,7 @@ bool ASTParser::ParseTypedef(ASTNode* parent, ASTPosition& cposition)
 		while (true)
 		{
 			std::unique_ptr<ASTType> subType2(new ASTType(this));
-			subType2->type = "TYPEDEF_SUB";
+			subType2->SetType("TYPEDEF_SUB", ASTNode::Type::TypedefSub);
 			if (ParseDeclarationSub(parent, position, subType2.get(), subType.get(), opts) == false)
 				return false;
 
@@ -704,12 +704,12 @@ bool ASTParser::ParseEnum( ASTNode* parent, ASTPosition& position )
 	position.Increment();
 
 	std::unique_ptr<ASTTokenNode> subNode(new ASTTokenNode(this));
-	subNode->type = "ENUM";
+	subNode->SetType("ENUM", ASTNode::Type::Enum);
 
 	if(position.GetToken().TokenType == Token::Type::Class)
 	{
 		// c++11 enum class
-		subNode->type = "ENUM_CLASS";
+		subNode->SetType("ENUM_CLASS", ASTNode::Type::EnumClass);
 		position.Increment();
 	}
 
@@ -752,7 +752,7 @@ bool ASTParser::ParseEnumDefinition( ASTNode* parent, ASTPosition& position )
 		return false;
 
 	std::unique_ptr < ASTTokenNode> subNode(new ASTTokenNode(this));
-	subNode->type = "ENUM_DEFINITION";
+	subNode->SetType("ENUM_DEFINITION", ASTNode::Type::EnumDef);
 
 	// store token
 	subNode->Tokens.push_back(position.GetTokenIndex());
@@ -765,7 +765,7 @@ bool ASTParser::ParseEnumDefinition( ASTNode* parent, ASTPosition& position )
 		// add the rest
 		// add initialization clause
 		std::unique_ptr < ASTDataNode> subSubNode(new ASTDataNode());
-		subSubNode->type = "INIT";
+		subSubNode->SetType("INIT", ASTNode::Type::Init);
 
 		subSubNode->data.push_back(CombineWhile_ScopeAware(position, [] ( ASTPosition& position) { return position.GetToken().TokenType != Token::Type::Comma && position.GetToken().TokenType != Token::Type::RBrace && position.GetToken().TokenType != Token::Type::Semicolon; }, &ASTParser::ASTPosition::FilterComments));
 		subNode->AddNode(subSubNode.release());
@@ -831,11 +831,11 @@ bool ASTParser::ParseClassInheritance(int &inheritancePublicPrivateProtected, AS
 	ASTDeclarationParsingOptions opts;
 	if (ParseDeclarationHead(subNode.get(), position, subType.get(), opts) == false)
 		return false;
-	subType->type = "INHERIT_FROM";
+	subType->SetType("INHERIT_FROM", ASTNode::Type::Parent);
 	subNode->AddNode(subType.release());
 
 	// create subnode
-	subNode->type = "INHERIT";
+	subNode->SetType("INHERIT", ASTNode::Type::Inherit);
 	if(inheritancePublicPrivateProtected == 0)
 		subNode->data.push_back("public");
 	else if(inheritancePublicPrivateProtected == 1)
@@ -892,9 +892,7 @@ bool ASTParser::ParsePrivatePublicProtected(int& privatePublicProtected, ASTPosi
 bool ASTParser::ParseConstructorInitializer(ASTType* parent, ASTPosition& cposition)
 {
 	std::unique_ptr<ASTNode> ndRoot(new ASTNode());
-	ndRoot->type = "DCL_FUNC_CINIT";
-
-
+	ndRoot->SetType("DCL_FUNC_CINIT", ASTNode::Type::CInitFuncDcl);
 
 	ASTPosition position = cposition;
 	std::string name = "";
@@ -905,7 +903,7 @@ bool ASTParser::ParseConstructorInitializer(ASTType* parent, ASTPosition& cposit
 
 	// store name and increment
 	std::unique_ptr<ASTTokenNode> ndVar(new ASTTokenNode(this));
-	ndVar->type = "CINIT_VAR";
+	ndVar->SetType("CINIT_VAR", ASTNode::Type::CInitVar);
 	ndVar->Tokens.push_back(position.GetTokenIndex());
 	position.Increment();
 
@@ -914,7 +912,7 @@ bool ASTParser::ParseConstructorInitializer(ASTType* parent, ASTPosition& cposit
 		return false;
 
 	std::unique_ptr<ASTTokenNode> ndSet(new ASTTokenNode(this));
-	ndSet->type = "CINIT_SET";
+	ndSet->SetType("CINIT_SET", ASTNode::Type::CInitSet);
 	if (ParseSpecificScopeInner(position, ndSet->Tokens, Token::Type::LParen, Token::Type::RParen, &ASTPosition::FilterComments) == false)
 		return false;
 
@@ -951,7 +949,7 @@ bool ASTParser::ParseDeclarationHead(ASTNode* parent, ASTPosition& cposition, AS
 		if (ParseDeclarationSubArgumentsScopedWithNonTypes(position, argNode.get(), Token::Type::LArrow, Token::Type::RArrow) == false)
 			return false; // it must be a pointer instead? (e.g. void (*test); );
 
-		argNode->type = "DCL_TEMPLATE_ARGS";
+		argNode->SetType("DCL_TEMPLATE_ARGS", ASTNode::Type::TemplateArgDcl);
 		type->ndTemplateArgumentList = argNode.get();
 		type->AddNode(argNode.release());
 		
@@ -990,7 +988,7 @@ bool ASTParser::ParseDeclarationSub(ASTNode* parent, ASTPosition& cposition, AST
 
 		if (ParseDeclarationSubArgumentsScoped(position, argNode.get(), Token::Type::LParen, Token::Type::RParen))
 		{
-			argNode->type = "DCL_FPTR_ARGS";
+			argNode->SetType("DCL_FPTR_ARGS", ASTNode::Type::FuncPtrArgDcl);
 			type->ndFuncPointerArgumentList = argNode.get();
 			type->AddNode(argNode.release());
 			parsedArguments = true;
@@ -1024,13 +1022,13 @@ bool ASTParser::ParseDeclarationSub(ASTNode* parent, ASTPosition& cposition, AST
 			if (opts.AllowCtor == false)
 				return false; // if it's impossible to be a ctor (such as in class/struct/union scope, or function argument scope), this is invalid.
 
-			argNode->type = "DCL_CTOR_ARGS";
+			argNode->SetType("DCL_CTOR_ARGS", ASTNode::Type::CtorArgsDcl);
 			if (ParseConstructorArguments(argNode.get(), position) == false)
 				return false;
 		}
 		else
 		{
-			argNode->type = "DCL_FUNC_ARGS";
+			argNode->SetType("DCL_FUNC_ARGS", ASTNode::Type::FuncArgDcl);
 			type->ndFuncArgumentList = argNode.get();
 		}
 			
@@ -1062,14 +1060,14 @@ bool ASTParser::ParseDeclarationSub(ASTNode* parent, ASTPosition& cposition, AST
 		if (funcModifiers.size() > 0)
 		{
 			std::unique_ptr<ASTNode> funcModifierList(new ASTNode());
-			funcModifierList->type = "DCL_FUNC_MODS";
+			funcModifierList->SetType("DCL_FUNC_MODS", ASTNode::Type::FuncModDcl);
 			type->ndFuncModifierList = funcModifierList.get();
 
 			// fill modifier data
 			for (size_t i = 0; i < funcModifiers.size(); i++)
 			{
 				std::unique_ptr<ASTTokenNode> funcModifier(new ASTTokenNode(this));
-				funcModifier->type = "MODIFIER";
+				funcModifier->SetType("MODIFIER", ASTNode::Type::Modifier);
 
 				std::string modifierData;
 				for (size_t j = funcModifiers[i].first; j <= funcModifiers[i].second; j++)
@@ -1093,7 +1091,7 @@ bool ASTParser::ParseDeclarationSub(ASTNode* parent, ASTPosition& cposition, AST
 		position.Increment();
 
 		ASTTokenNode* subNode = new ASTTokenNode(this);
-		subNode->type = "INIT";
+		subNode->SetType("INIT", ASTNode::Type::Init);
 
 		ParseToArray_ScopeAware(subNode->Tokens, position,
 			[](ASTPosition& position) { return position.GetToken().TokenType != Token::Type::Semicolon && position.GetToken().TokenType != Token::Type::Comma; },
@@ -1186,12 +1184,12 @@ bool ASTParser::ParseDeclaration(ASTNode* parent, ASTPosition& cposition, ASTDec
 		position.Increment();
 
 		ASTTokenNode* nd = new ASTTokenNode(this);
-		nd->type = "DCL_FUNC_DECLARATION";
+		nd->SetType("DCL_FUNC_DECLARATION", ASTNode::Type::FuncDcl);
 		nd->Tokens.swap(functionDeclarationTokens);
 		if (lastSubID == -1)
 			headType->AddNode(nd);
 		else
-			headType->m_children[lastSubID]->AddNode(nd);
+			headType->Children()[lastSubID]->AddNode(nd);
 		
 	}
 	else if (position.GetToken().TokenType == Token::Type::Semicolon) // ;
@@ -1200,7 +1198,7 @@ bool ASTParser::ParseDeclaration(ASTNode* parent, ASTPosition& cposition, ASTDec
 		return false;
 	
 	// push to list
-	headType->type = "DCL_HEAD";
+	headType->SetType("DCL_HEAD", ASTNode::Type::DclHead);
 	parent->AddNode(headType.release());
 	cposition = position;
 	return true;
@@ -1249,8 +1247,8 @@ bool ASTParser::_ParseDeclaration_HeadSubs(ASTPosition &position, ASTNode* paren
 		subCount++;
 
 		// apply to head type children
-		subtype->type = "DCL_SUB";
-		lastSubID = headType->m_children.size();
+		subtype->SetType("DCL_SUB", ASTNode::Type::DclSub);
+		lastSubID = headType->Children().size();
 		headType->AddNode(subtype.release());
 
 		if (position.GetToken().TokenType == Token::Type::Comma)
@@ -1355,6 +1353,7 @@ bool ASTParser::ParseModifierToken(ASTPosition& cposition, std::vector<std::pair
 	{
 	case Token::Type::Const:
 	case Token::Type::Inline:
+	case Token::Type::GCCInline:
 	case Token::Type::Extern:
 	case Token::Type::Virtual:
 	case Token::Type::Volatile:
@@ -1635,7 +1634,7 @@ bool ASTParser::ParseDeclarationSubArguments(ASTPosition &position, ASTNode* par
 		if (position.GetToken().TokenType == Token::Type::DotDotDot)
 		{
 			std::unique_ptr<ASTNode> subNode(new ASTNode());
-			subNode->type = "DCL_VARARGS";
+			subNode->SetType("DCL_VARARGS", ASTNode::Type::VarArgDcl);
 			parent->AddNode(subNode.release());
 			position.Increment();
 			break;
@@ -1647,7 +1646,7 @@ bool ASTParser::ParseDeclarationSubArguments(ASTPosition &position, ASTNode* par
 			return false;
 
 		ParseDeclarationSub(parent, position, subType.get(), 0, opts);
-		subType->type = "DCL_ARG";
+		subType->SetType("DCL_ARG", ASTNode::Type::ArgDcl);
 		parent->AddNode(subType.release());
 
 		if (position.GetToken().TokenType == Token::Type::Comma)
@@ -1691,7 +1690,7 @@ bool ASTParser::ParseDeclarationSubArgumentsScopedWithNonTypes(ASTPosition &cpos
 		if (position.GetToken().TokenType == Token::Type::DotDotDot)
 		{
 			std::unique_ptr<ASTNode> subNode(new ASTNode());
-			subNode->type = "DCL_VARARGS";
+			subNode->SetType("DCL_VARARGS", ASTNode::Type::VarArgDcl);
 			parent->AddNode(subNode.release());
 			position.Increment();
 			break;
@@ -1702,13 +1701,13 @@ bool ASTParser::ParseDeclarationSubArgumentsScopedWithNonTypes(ASTPosition &cpos
 		if (ParseDeclarationHead(parent, position, subType.get(), opts))
 		{
 			ParseDeclarationSub(parent, position, subType.get(), 0, opts);
-			subType->type = "DCL_ARG";
+			subType->SetType("DCL_ARG", ASTNode::Type::ArgDcl);
 			parent->AddNode(subType.release());
 		}
 		else
 		{
 			std::unique_ptr<ASTTokenNode> tokNode(new ASTTokenNode(this));
-			tokNode->type = "DCL_NONTYPE_ARG";
+			tokNode->SetType("DCL_NONTYPE_ARG", ASTNode::Type::ArgNonTypeDcl);
 			Parse_ScopeAware(position,
 				[rightScope](ASTPosition& p) { return p.GetToken().TokenType != Token::Type::Comma && p.GetToken().TokenType != rightScope; },
 				[&tokNode](ASTPosition& p) { tokNode->Tokens.push_back(p.GetTokenIndex()); },
@@ -1773,7 +1772,7 @@ bool ASTParser::ParseConstructorArguments(ASTNode* parent, ASTPosition &position
 	do
 	{
 		ASTTokenNode* tokNode = new ASTTokenNode(this);
-		tokNode->type = "DCL_CTOR_ARG";
+		tokNode->SetType("DCL_CTOR_ARG", ASTNode::Type::CtorArgDcl);
 		Parse_ScopeAware(position,
 			[](ASTPosition& p) { return p.GetToken().TokenType != Token::Type::Comma && p.GetToken().TokenType != Token::Type::RParen; },
 			[tokNode](ASTPosition& p) { tokNode->Tokens.push_back(p.GetTokenIndex()); },
@@ -1809,9 +1808,9 @@ bool ASTParser::ParseExtensionAnnotation(ASTNode* parent, ASTPosition& cposition
 			std::unique_ptr<ASTTokenNode> ndAnnotationRoot(new ASTTokenNode(this));
 
 			if (annotationType == Token::Type::AnnotationForwardStart)
-				ndAnnotationRoot->type = "ANNOTATION_FWD";
+				ndAnnotationRoot->SetType("ANNOTATION_FWD", ASTNode::Type::AntFwd);
 			else
-				ndAnnotationRoot->type = "ANNOTATION_BACK";
+				ndAnnotationRoot->SetType("ANNOTATION_BACK", ASTNode::Type::AntBack);
 
 			if (ParseExtensionAnnotationContent(ndAnnotationRoot.get(), position) == false)
 				return false;
@@ -1859,12 +1858,12 @@ bool ASTParser::ParseExtensionAnnotationContent(ASTTokenNode* ndAnnotationRoot, 
 
 		// parse arguments
 		std::unique_ptr<ASTNode> ndAnnotationArguments(new ASTNode());
-		ndAnnotationArguments->type = "ANT_ARGS";
+		ndAnnotationArguments->SetType("ANT_ARGS", ASTNode::Type::AntArgs);
 
 		while (true)
 		{
 			std::unique_ptr<ASTTokenNode> ndAnnotationArgument(new ASTTokenNode(this));
-			ndAnnotationArgument->type = "ANT_ARG";
+			ndAnnotationArgument->SetType("ANT_ARG", ASTNode::Type::AntArg);
 
 			ParseToArray_ScopeAware(ndAnnotationArgument->Tokens, position, [annotationArgScopeClose](ASTPosition& p) { return p.GetToken().TokenType != Token::Type::Comma && p.GetToken().TokenType != annotationArgScopeClose; });
 			

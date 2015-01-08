@@ -24,7 +24,7 @@ int main(int argc, char** argv)
 	// create root objects
 	std::vector<std::unique_ptr<ASTParser>> parsers;
 	ASTNode superRoot;
-	superRoot.SetType("ROOT");
+	superRoot.SetType("ROOT", ASTNode::Type::Root);
 
 	// check whether help is needed
 	if (opts.optionsWithValues["module"].size() == 0)
