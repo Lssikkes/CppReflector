@@ -10,7 +10,7 @@
 
 #include "modules.h"
 #include "ast.h"
-#include "astParser.h"
+#include "cxxAstParser.h"
 
 // TODO: pointer to member objects
 
@@ -22,9 +22,9 @@ int main(int argc, char** argv)
 	tools::CommandLineParser::parse(opts, argc, argv);
 
 	// create root objects
-	std::vector<std::unique_ptr<ASTParser>> parsers;
+	std::vector<std::unique_ptr<ASTCxxParser>> parsers;
 	ASTNode superRoot;
-	superRoot.SetType("ROOT", ASTNode::Type::Root);
+	superRoot.SetType(ASTNode::Type::Root);
 
 	// check whether help is needed
 	if (opts.optionsWithValues["module"].size() == 0)

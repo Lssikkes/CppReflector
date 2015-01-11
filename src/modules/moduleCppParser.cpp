@@ -1,8 +1,8 @@
-#include "modules.h"
-#include "tools.h"
-#include "tokenizer.h"
-#include "astProcessor.h"
-#include "astParser.h"
+#include "../modules.h"
+#include "../tools.h"
+#include "../cxxTokenizer.h"
+#include "../cxxAstParser.h"
+#include "../astProcessor.h" 
 #include <mutex>
 
 #include <omp.h>
@@ -12,7 +12,7 @@ class ModuleCppParser : public IModule
 public:
 	ModuleCppParser(bool a_MT) : Multithreaded(a_MT) {}
 	bool Multithreaded;
-	virtual void Execute(tools::CommandLineParser& opts, ASTNode* rootNode, std::vector<std::unique_ptr<ASTParser>>& parsers)
+	virtual void Execute(tools::CommandLineParser& opts, ASTNode* rootNode, std::vector<std::unique_ptr<ASTCxxParser>>& parsers)
 	{
 		fprintf(stderr, "********************* CPP PARSER (%s) ***********************\n", Multithreaded ? "MT" : "ST");
 
@@ -36,21 +36,21 @@ public:
 		}
 	}
 
-	void ParseFile(tools::CommandLineParser &opts, size_t i, std::vector<std::unique_ptr<ASTParser>> &parsers, std::mutex &lkSuperRoot, ASTNode* rootNode)
+	void ParseFile(tools::CommandLineParser &opts, size_t i, std::vector<std::unique_ptr<ASTCxxParser>> &parsers, std::mutex &lkSuperRoot, ASTNode* rootNode)
 	{
 		fprintf(stderr, "[PARSER] Parsing file \"%s\"\n", opts.names[i].c_str());
-		StringTokenizer stokenizer(tools::readFromFile(opts.names[i]));
-		std::unique_ptr<ASTParser> parser(new ASTParser(stokenizer));
+		CxxStringTokenizer stokenizer(tools::readFromFile(opts.names[i]));
+		std::unique_ptr<ASTCxxParser> parser(new ASTCxxParser(stokenizer));
 
 		// enable verbosity
 		if (opts.options.find("verbose") != opts.options.end())
 			parser->Verbose = true;
 
 		std::unique_ptr<ASTDataNode> root(new ASTDataNode);
-		root->SetType("FILE", ASTNode::Type::File);
+		root->SetType(ASTNode::Type::File);
 		root->AddData(opts.names[i]);
 
-		ASTParser::ASTPosition position(*parser.get());
+		ASTCxxParser::ASTPosition position(*parser.get());
 		try
 		{
 			if (parser->Parse(root.get(), position))

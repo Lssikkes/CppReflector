@@ -1,0 +1,23 @@
+--------------------------------------------------------
+Module: Debug
+--------------------------------------------------------
+
+* Implements module(s):
+print_ast, print_structure, print_types
+
+* Primary maintainer:
+Leroy Sikkes
+
+* Contributors:
+Daniel Wustenhoff
+
+* Purpose:
+Providing debug tools in order to easily debug/visualize the internal structures.
+
+* Usage:
+- print_ast
+Enabling this module will print the full AST to stdout.
+- print_structure
+Enabling this module will print a filtered AST to stdout (easier to read, strips most of the sub ast nodes that are only of interest for low level use)
+- print_types
+Enabling this module will print all ASTType nodes found in the ROOT, and will print their respective types.

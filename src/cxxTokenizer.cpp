@@ -1,21 +1,21 @@
-#include "tokenizer.h"
+#include "cxxTokenizer.h"
 #include <stdexcept>
 #include <map>
 #include "tools.h"
 
-Token Tokenizer::PeekNextToken(size_t& offset)
+CxxToken CxxTokenizer::PeekNextToken(size_t& offset)
 {
-	Token token;
+	CxxToken token;
 	auto dt = PeekBytes(1, offset);
 	token.TokenData = std::string(dt.data, dt.length);
 	token.TokenByteOffset = m_offset + offset;
 	offset += token.TokenData.size();
 
 	if(token.TokenData.size() == 0)
-		token.TokenType = Token::Type::EndOfStream;
+		token.TokenType = CxxToken::Type::EndOfStream;
 	else if (token.TokenData.at(0) == ' ' || token.TokenData.at(0) == '\t')
 	{
-		token.TokenType = Token::Type::Whitespace;
+		token.TokenType = CxxToken::Type::Whitespace;
 		Data next;
 		while (true)
 		{
@@ -27,65 +27,65 @@ Token Tokenizer::PeekNextToken(size_t& offset)
 		}
 	}	
 	else if(token.TokenData.at(0) == '\n')
-		token.TokenType = Token::Type::Newline;
+		token.TokenType = CxxToken::Type::Newline;
 	else if(token.TokenData.at(0) == '[')
-		token.TokenType = Token::Type::LBracket;
+		token.TokenType = CxxToken::Type::LBracket;
 	else if(token.TokenData.at(0) == ']')
-		token.TokenType = Token::Type::RBracket;
+		token.TokenType = CxxToken::Type::RBracket;
 	else if (token.TokenData.at(0) == '|')
-		token.TokenType = Token::Type::Pipe;
+		token.TokenType = CxxToken::Type::Pipe;
 	else if (token.TokenData.at(0) == '%')
-		token.TokenType = Token::Type::Percent;
+		token.TokenType = CxxToken::Type::Percent;
 	else if(token.TokenData.at(0) == '{')
-		token.TokenType = Token::Type::LBrace;
+		token.TokenType = CxxToken::Type::LBrace;
 	else if(token.TokenData.at(0) == '}')
-		token.TokenType = Token::Type::RBrace;
+		token.TokenType = CxxToken::Type::RBrace;
 	else if (token.TokenData.at(0) == '+')
-		token.TokenType = Token::Type::Plus;
+		token.TokenType = CxxToken::Type::Plus;
 	else if (token.TokenData.at(0) == '-')
-		token.TokenType = Token::Type::Minus;
+		token.TokenType = CxxToken::Type::Minus;
 	else if(token.TokenData.at(0) == '(')
-		token.TokenType = Token::Type::LParen;
+		token.TokenType = CxxToken::Type::LParen;
 	else if(token.TokenData.at(0) == ')')
-		token.TokenType = Token::Type::RParen;
+		token.TokenType = CxxToken::Type::RParen;
 	else if(token.TokenData.at(0) == '<')
-		token.TokenType = Token::Type::LArrow;
+		token.TokenType = CxxToken::Type::LArrow;
 	else if(token.TokenData.at(0) == '>')
-		token.TokenType = Token::Type::RArrow;
+		token.TokenType = CxxToken::Type::RArrow;
 	else if(token.TokenData.at(0) == ';')
-		token.TokenType = Token::Type::Semicolon;
+		token.TokenType = CxxToken::Type::Semicolon;
 	else if(token.TokenData.at(0) == '!')
-		token.TokenType = Token::Type::Exclamation;
+		token.TokenType = CxxToken::Type::Exclamation;
 	else if(token.TokenData.at(0) == '*')
-		token.TokenType = Token::Type::Asterisk;
+		token.TokenType = CxxToken::Type::Asterisk;
 	else if(token.TokenData.at(0) == '&')
-		token.TokenType = Token::Type::Ampersand;
+		token.TokenType = CxxToken::Type::Ampersand;
 	else if (token.TokenData.at(0) == '~')
-		token.TokenType = Token::Type::Tilde;
+		token.TokenType = CxxToken::Type::Tilde;
 	else if(token.TokenData.at(0) == '#')
-		token.TokenType = Token::Type::Hash;
+		token.TokenType = CxxToken::Type::Hash;
 	else if(token.TokenData.at(0) == '=')
-		token.TokenType = Token::Type::Equals;
+		token.TokenType = CxxToken::Type::Equals;
 	else if (token.TokenData.at(0) == '.')
 	{
 		auto next = PeekBytes(2, offset);
 		if (next == "..")
 		{
-			token.TokenType = Token::Type::DotDotDot;
+			token.TokenType = CxxToken::Type::DotDotDot;
 			AddPart(token, next, offset);
 		}
 		else 
-			token.TokenType = Token::Type::Dot;
+			token.TokenType = CxxToken::Type::Dot;
 	}
 	else if(token.TokenData.at(0) == ',')
-		token.TokenType = Token::Type::Comma;
+		token.TokenType = CxxToken::Type::Comma;
 	else if(token.TokenData.at(0) == '/')
 	{
 		// COMMENTS
 		auto next = PeekBytes(1, offset);
 		if(next == "*")
 		{
-			token.TokenType = Token::Type::CommentMultiLine;
+			token.TokenType = CxxToken::Type::CommentMultiLine;
 
 			offset = AddPart(token, next, offset);
 
@@ -121,18 +121,18 @@ Token Tokenizer::PeekNextToken(size_t& offset)
 			auto annotationPrefix = PeekBytes(2, offset);
 			if (WithAnnotations && annotationPrefix == "@[")
 			{
-				token.TokenType = Token::Type::AnnotationForwardStart;
+				token.TokenType = CxxToken::Type::AnnotationForwardStart;
 				offset = AddPart(token, annotationPrefix, offset);
 			}
 			else if (WithAnnotations && annotationPrefix == "@<" && PeekBytes(1, offset + 2) == "[")
 			{
 				annotationPrefix = PeekBytes(3, offset);
-				token.TokenType = Token::Type::AnnotationBackStart;
+				token.TokenType = CxxToken::Type::AnnotationBackStart;
 				offset = AddPart(token, annotationPrefix, offset);
 			}
 			else
 			{
-				token.TokenType = Token::Type::CommentSingleLine;
+				token.TokenType = CxxToken::Type::CommentSingleLine;
 
 				auto next = PeekBytes(1, offset);
 				while (next.size() > 0 && next.at(0) != '\n' && next.at(0) != '\r')
@@ -143,15 +143,15 @@ Token Tokenizer::PeekNextToken(size_t& offset)
 			}
 		}
 		else 
-			token.TokenType = Token::Type::Slash;
+			token.TokenType = CxxToken::Type::Slash;
 	}
 	else if(token.TokenData.at(0) == '\"' || token.TokenData.at(0) == '\'')
 	{
 		// STRINGS
 		if(token.TokenData.at(0) == '\"')
-			token.TokenType = Token::Type::String;
+			token.TokenType = CxxToken::Type::String;
 		else 
-			token.TokenType = Token::Type::CharConstant;
+			token.TokenType = CxxToken::Type::CharConstant;
 
 		auto next = PeekBytes(1, offset);
 		while(true)
@@ -206,7 +206,7 @@ Token Tokenizer::PeekNextToken(size_t& offset)
 	}
 	else if((token.TokenData.at(0) >= 'a' && token.TokenData.at(0) <= 'z') || (token.TokenData.at(0) >= 'A' && token.TokenData.at(0) <= 'Z') || token.TokenData.at(0) == '_' )
 	{
-		token.TokenType = Token::Type::Keyword;
+		token.TokenType = CxxToken::Type::Keyword;
 
 		auto next = PeekBytes(1, offset);
 		while(next.size() > 0 && ((next.at(0) >= 'a' && next.at(0) <= 'z') || (next.at(0) >= 'A' && next.at(0) <= 'Z') || (next.at(0) >= '0' && next.at(0) <= '9') || next.at(0) == '_' ||  next.at(0) == '-') )
@@ -219,7 +219,7 @@ Token Tokenizer::PeekNextToken(size_t& offset)
 	}
 	else if((token.TokenData.at(0) >= '0' && token.TokenData.at(0) <= '9') )
 	{
-		token.TokenType = Token::Type::Number;
+		token.TokenType = CxxToken::Type::Number;
 
 		auto next = PeekBytes(1, offset);
 
@@ -236,17 +236,17 @@ Token Tokenizer::PeekNextToken(size_t& offset)
 	}
 	else if(token.TokenData.at(0) == ':')
 	{
-		token.TokenType = Token::Type::Colon;
+		token.TokenType = CxxToken::Type::Colon;
 		auto next = PeekBytes(1, offset);
 		if(next == ":")
 		{
-			token.TokenType = Token::Type::Doublecolon;
+			token.TokenType = CxxToken::Type::Doublecolon;
 			offset = AddPart(token, next, offset);
 		}	
 	}
 	else if(token.TokenData.at(0) == '\r')
 	{
-		token.TokenType = Token::Type::Newline;
+		token.TokenType = CxxToken::Type::Newline;
 		auto next = PeekBytes(1, offset);
 		if(next == "\n")
 			offset = AddPart(token, next, offset);
@@ -258,19 +258,19 @@ Token Tokenizer::PeekNextToken(size_t& offset)
 		auto next = PeekBytes(2, offset);
 		if (next == bomContinuation)
 		{
-			token.TokenType = Token::Type::BOM_UTF8;
+			token.TokenType = CxxToken::Type::BOM_UTF8;
 			AddPart(token, next, offset);
 		}
 		else
-			token.TokenType = Token::Type::Unknown;
+			token.TokenType = CxxToken::Type::Unknown;
 	}
 	else
-		token.TokenType = Token::Type::Unknown;
+		token.TokenType = CxxToken::Type::Unknown;
 	return token;
 }
 
-std::map<unsigned long, Token::Type> gTokenTypes;
-std::map<Token::Type, std::string> gTokenStrings;
+std::map<unsigned long, CxxToken::Type> gTokenTypes;
+std::map<CxxToken::Type, std::string> gTokenStrings;
 
 // static initialization to ensure this happens first
 namespace
@@ -280,70 +280,70 @@ namespace
 	public:
 		TokenInitializer()
 		{
-			AddPair("true", Token::Type::True);
-			AddPair("false", Token::Type::False);
-			AddPair("public", Token::Type::Public);
-			AddPair("protected", Token::Type::Protected);
-			AddPair("private", Token::Type::Private);
-			AddPair("class", Token::Type::Class);
-			AddPair("struct", Token::Type::Struct);
-			AddPair("union", Token::Type::Union);
-			AddPair("const", Token::Type::Const);
-			AddPair("unsigned", Token::Type::Unsigned);
-			AddPair("signed", Token::Type::Signed);
-			AddPair("null", Token::Type::Null);
-			AddPair("nullptr", Token::Type::Nullptr);
-			AddPair("void", Token::Type::Void);
-			AddPair("__int64", Token::Type::BuiltinType);
-			AddPair("bool", Token::Type::BuiltinType);
-			AddPair("int", Token::Type::BuiltinType);
-			AddPair("short", Token::Type::BuiltinType);
-			AddPair("long", Token::Type::BuiltinType);
-			AddPair("float", Token::Type::BuiltinType);
-			AddPair("double", Token::Type::BuiltinType);
-			AddPair("char", Token::Type::BuiltinType);
-			AddPair("undefined", Token::Type::Undefined);
-			AddPair("enum", Token::Type::Enum);
-			AddPair("virtual", Token::Type::Virtual);
-			AddPair("volatile", Token::Type::Volatile);
-			AddPair("mutable", Token::Type::Mutable);
-			AddPair("extern", Token::Type::Extern);
-			AddPair("inline", Token::Type::Inline);
-			AddPair("static", Token::Type::Static);
-			AddPair("operator", Token::Type::Operator);
-			AddPair("template", Token::Type::Template);
-			AddPair("typedef", Token::Type::Typedef);
-			AddPair("typename", Token::Type::Typename);
-			AddPair("namespace", Token::Type::Namespace);
-			AddPair("using", Token::Type::Using);
-			AddPair("friend", Token::Type::Friend);
-			AddPair("restrict", Token::Type::Restrict);
-			AddPair("throw", Token::Type::Throw);
-			AddPair("__forceinline", Token::Type::MSVCForceInline);
-			AddPair("__thread", Token::Type::Thread);
-			AddPair("__inline", Token::Type::GCCInline);
-			AddPair("__asm__", Token::Type::GCCAssembly);
-			AddPair("__declspec", Token::Type::MSVCDeclspec);
-			AddPair("__attribute__", Token::Type::GCCAttribute);
-			AddPair("__restrict", Token::Type::MSVCRestrict);
-			AddPair("__restrict__", Token::Type::GCCRestrict);
-			AddPair("__extension__", Token::Type::GCCExtension);
+			AddPair("true", CxxToken::Type::True);
+			AddPair("false", CxxToken::Type::False);
+			AddPair("public", CxxToken::Type::Public);
+			AddPair("protected", CxxToken::Type::Protected);
+			AddPair("private", CxxToken::Type::Private);
+			AddPair("class", CxxToken::Type::Class);
+			AddPair("struct", CxxToken::Type::Struct);
+			AddPair("union", CxxToken::Type::Union);
+			AddPair("const", CxxToken::Type::Const);
+			AddPair("unsigned", CxxToken::Type::Unsigned);
+			AddPair("signed", CxxToken::Type::Signed);
+			AddPair("null", CxxToken::Type::Null);
+			AddPair("nullptr", CxxToken::Type::Nullptr);
+			AddPair("void", CxxToken::Type::Void);
+			AddPair("__int64", CxxToken::Type::BuiltinType);
+			AddPair("bool", CxxToken::Type::BuiltinType);
+			AddPair("int", CxxToken::Type::BuiltinType);
+			AddPair("short", CxxToken::Type::BuiltinType);
+			AddPair("long", CxxToken::Type::BuiltinType);
+			AddPair("float", CxxToken::Type::BuiltinType);
+			AddPair("double", CxxToken::Type::BuiltinType);
+			AddPair("char", CxxToken::Type::BuiltinType);
+			AddPair("undefined", CxxToken::Type::Undefined);
+			AddPair("enum", CxxToken::Type::Enum);
+			AddPair("virtual", CxxToken::Type::Virtual);
+			AddPair("volatile", CxxToken::Type::Volatile);
+			AddPair("mutable", CxxToken::Type::Mutable);
+			AddPair("extern", CxxToken::Type::Extern);
+			AddPair("inline", CxxToken::Type::Inline);
+			AddPair("static", CxxToken::Type::Static);
+			AddPair("operator", CxxToken::Type::Operator);
+			AddPair("template", CxxToken::Type::Template);
+			AddPair("typedef", CxxToken::Type::Typedef);
+			AddPair("typename", CxxToken::Type::Typename);
+			AddPair("namespace", CxxToken::Type::Namespace);
+			AddPair("using", CxxToken::Type::Using);
+			AddPair("friend", CxxToken::Type::Friend);
+			AddPair("restrict", CxxToken::Type::Restrict);
+			AddPair("throw", CxxToken::Type::Throw);
+			AddPair("__forceinline", CxxToken::Type::MSVCForceInline);
+			AddPair("__thread", CxxToken::Type::Thread);
+			AddPair("__inline", CxxToken::Type::GCCInline);
+			AddPair("__asm__", CxxToken::Type::GCCAssembly);
+			AddPair("__declspec", CxxToken::Type::MSVCDeclspec);
+			AddPair("__attribute__", CxxToken::Type::GCCAttribute);
+			AddPair("__restrict", CxxToken::Type::MSVCRestrict);
+			AddPair("__restrict__", CxxToken::Type::GCCRestrict);
+			AddPair("__extension__", CxxToken::Type::GCCExtension);
 		}
 
 	private:
-		void AddPair(const std::string& inStr, Token::Type inType)
+		void AddPair(const std::string& inStr, CxxToken::Type inType)
 		{
 			grTokenTypes[tools::crc32String(inStr)] = inType;
 			grTokenStrings[inType] = inStr;
 		}
 
-		std::map<unsigned long, Token::Type> &grTokenTypes = gTokenTypes;
-		std::map<Token::Type, std::string> &grTokenStrings = gTokenStrings;
+		std::map<unsigned long, CxxToken::Type> &grTokenTypes = gTokenTypes;
+		std::map<CxxToken::Type, std::string> &grTokenStrings = gTokenStrings;
 	} gTokenInitializer;
 }
 
 
-void Tokenizer::ConvertToSpecializedKeyword( Token& token )
+void CxxTokenizer::ConvertToSpecializedKeyword( CxxToken& token )
 {
 	unsigned long hsh = tools::crc32String(token.TokenData);
 	auto loc = gTokenTypes.find(hsh);
@@ -352,22 +352,22 @@ void Tokenizer::ConvertToSpecializedKeyword( Token& token )
 
 }
 
-int Tokenizer::IsCombinableWith( Token& token, Token& nextToken )
+int CxxTokenizer::IsCombinableWith( CxxToken& token, CxxToken& nextToken )
 {
-    if(token.TokenType == Token::Type::Unknown)
+    if(token.TokenType == CxxToken::Type::Unknown)
 	{
-		if(nextToken.TokenType == Token::Type::Unknown)
+		if(nextToken.TokenType == CxxToken::Type::Unknown)
 			return 2;
 		return 1;
 	}
 	return 0;
 }
 
-Token Tokenizer::GetNextToken()
+CxxToken CxxTokenizer::GetNextToken()
 {
 	size_t offset = 0;
-	Token nextToken; 
-	Token token=PeekNextToken(offset);
+	CxxToken nextToken; 
+	CxxToken token=PeekNextToken(offset);
 
 	// combine tokens
 	if(IsCombinableWith(token,nextToken) >= 1)
@@ -388,7 +388,7 @@ Token Tokenizer::GetNextToken()
 
 
 
-Tokenizer::Data StringTokenizer::PeekBytes(size_t numBytes, size_t offset)
+CxxTokenizer::Data CxxStringTokenizer::PeekBytes(size_t numBytes, size_t offset)
 {
 	size_t noffset = m_offset + offset;
 	if(noffset + numBytes > Source.size())
@@ -406,7 +406,7 @@ Tokenizer::Data StringTokenizer::PeekBytes(size_t numBytes, size_t offset)
 	}
 }
 
-size_t StringTokenizer::Advance( size_t numBytes )
+size_t CxxStringTokenizer::Advance( size_t numBytes )
 {
 	if(m_offset + numBytes > Source.size())
 		numBytes = Source.size() - m_offset;
@@ -414,17 +414,17 @@ size_t StringTokenizer::Advance( size_t numBytes )
 	return numBytes;
 }
 
-void Tokenizer::Debug()
+void CxxTokenizer::Debug()
 {
-	Token nextToken;
+	CxxToken nextToken;
 	int line = 1;
 	try
 	{
-		while((nextToken = GetNextToken()).TokenType != Token::Type::EndOfStream)
+		while((nextToken = GetNextToken()).TokenType != CxxToken::Type::EndOfStream)
 		{
-			if(nextToken.TokenType == Token::Type::Whitespace)
+			if(nextToken.TokenType == CxxToken::Type::Whitespace)
 				continue;
-			if(nextToken.TokenType == Token::Type::Newline)
+			if(nextToken.TokenType == CxxToken::Type::Newline)
 			{
 				line++;
 				continue;

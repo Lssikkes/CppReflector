@@ -21,7 +21,7 @@ protected:
 //@[MultiLine1] //@[MultiLine2]
 class TestAnnotations
 {
-	int m_Integer; //@<[Serializable, Bla] 
+	int m_Integer; //@<[NonNegative, Max(100)] 
 	TestArray<int> m_Integers;
 
 	Texture* m_Texture;

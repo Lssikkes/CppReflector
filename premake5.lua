@@ -27,15 +27,17 @@ newoption
 
 -- A solution contains projects, and defines the available configurations
 solution "CppReflector"
+   platforms { "x32", "x64"}
    configurations { "Debug", "Release" }
  
    -- A project defines one build target
    project "CppReflector"
       kind "ConsoleApp"
       language "C++"
-      files { "**.h", "**.cpp", "**.xh"}
+	  debugargs "--module=wildcard --module=cpp_parser --module=print_structure tests/test1.xh"
+      files { "src/**.h", "src/**.cpp", "tests/**.xh", "tests/**.xcpp", "docs/*.txt" }
       flags { "Cpp11" }
-
+	 
       if _OPTIONS['openmp'] ~= nil then EnableOpenMP() end
 
       configuration "Debug"
@@ -45,4 +47,3 @@ solution "CppReflector"
       configuration "Release"
          defines { "NDEBUG" }
          flags { "Optimize" }
-

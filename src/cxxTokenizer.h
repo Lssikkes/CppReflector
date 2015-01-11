@@ -7,7 +7,7 @@
 #include <string>
 #include <string.h>
 
-struct Token
+struct CxxToken
 {
 	enum class Type
 	{
@@ -94,7 +94,7 @@ struct Token
 		EndOfStream, // <EOF>
 		BOM_UTF8, // 0xEF,0xBB,0xBF
 	};
-	Token(): TokenType(Type::Init) {}
+	CxxToken(): TokenType(Type::Init) {}
 
 	Type TokenType;
 	std::string TokenData;
@@ -105,7 +105,7 @@ struct Token
 	operator Type() { return TokenType; }
 };
 
-class Tokenizer
+class CxxTokenizer
 {
 public:
 	struct Data
@@ -120,38 +120,38 @@ public:
 		bool operator == (const char* v) const { size_t ln = strlen(v); if (ln != length) return false; return memcmp(v, data, length) == 0;  }
 		bool operator != (const char* v) const { size_t ln = strlen(v); if (ln != length) return true; return memcmp(v, data, length) != 0; }
 	};
-	Token GetNextToken();
+	CxxToken GetNextToken();
 	void Debug();
 
 	bool WithAnnotations = true;
 protected:
-	Tokenizer(): m_offset(0) {}
+	CxxTokenizer(): m_offset(0) {}
 
-	virtual Tokenizer::Data PeekBytes(size_t numBytes, size_t offset = 0) = 0;
+	virtual CxxTokenizer::Data PeekBytes(size_t numBytes, size_t offset = 0) = 0;
 	virtual size_t Advance(size_t numBytes)=0;
 
-	Token PeekNextToken(size_t& offset);
+	CxxToken PeekNextToken(size_t& offset);
 
-	__forceinline size_t AddPart(Token &token, const Data &next, size_t& offset)
+	__forceinline size_t AddPart(CxxToken &token, const Data &next, size_t& offset)
 	{
 		token.TokenData += std::string(next.data, next.length);
 		offset += (int)next.length;
 		return offset;
 	}
 
-	int IsCombinableWith(Token& tok, Token& nextToken);
-	void ConvertToSpecializedKeyword(Token& tokKeyword);
+	int IsCombinableWith(CxxToken& tok, CxxToken& nextToken);
+	void ConvertToSpecializedKeyword(CxxToken& tokKeyword);
 	size_t m_offset;
 
 	
 };
 
-class StringTokenizer: public Tokenizer
+class CxxStringTokenizer: public CxxTokenizer
 {
 public:
-	StringTokenizer(std::string data) { Source = data; }
+	CxxStringTokenizer(std::string data) { Source = data; }
 protected:
-	virtual Tokenizer::Data PeekBytes(size_t numBytes, size_t offset = 0);
+	virtual CxxTokenizer::Data PeekBytes(size_t numBytes, size_t offset = 0);
 	virtual size_t Advance(size_t numBytes);
 
 	std::string Source;

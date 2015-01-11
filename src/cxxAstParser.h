@@ -1,7 +1,7 @@
 #pragma once
 
 #include <vector>
-#include "tokenizer.h"
+#include "cxxTokenizer.h"
 #include <memory>
 #include "ast.h"
 
@@ -13,33 +13,33 @@ struct ASTDeclarationParsingOptions
 	bool RequireIdentifier = false;
 };
 
-class ASTParser: public ASTTokenSource
+class ASTCxxParser: public ASTTokenSource
 {
 public:
 
 	class ASTPosition
 	{
 	public:
-		ASTPosition(ASTParser& parser);
+		ASTPosition(ASTCxxParser& parser);
 		ASTPosition& operator = (const ASTPosition& o) { this->Position = o.Position; return *this; }
 
-		static bool FilterWhitespaceComments(Token& token) { if (token.TokenType == Token::Type::Newline || token.TokenType == Token::Type::Whitespace || token.TokenType == Token::Type::CommentMultiLine || token.TokenType == Token::Type::CommentSingleLine) return false; return true; }
-		static bool FilterComments(Token& token) { if (token.TokenType == Token::Type::CommentMultiLine || token.TokenType == Token::Type::CommentSingleLine) return false; return true; }
-		static bool FilterNone(Token& token) { return true; }
+		static bool FilterWhitespaceComments(CxxToken& token) { if (token.TokenType == CxxToken::Type::Newline || token.TokenType == CxxToken::Type::Whitespace || token.TokenType == CxxToken::Type::CommentMultiLine || token.TokenType == CxxToken::Type::CommentSingleLine) return false; return true; }
+		static bool FilterComments(CxxToken& token) { if (token.TokenType == CxxToken::Type::CommentMultiLine || token.TokenType == CxxToken::Type::CommentSingleLine) return false; return true; }
+		static bool FilterNone(CxxToken& token) { return true; }
 
-		void Increment(int count=1, bool (*filterAllows)(Token& token)=&FilterWhitespaceComments);
+		void Increment(int count=1, bool (*filterAllows)(CxxToken& token)=&FilterWhitespaceComments);
 		
-		Token& GetToken();
-		Token& GetNextToken();
+		CxxToken& GetToken();
+		CxxToken& GetNextToken();
 		ASTTokenIndex GetTokenIndex() { return Position; }
 
-		ASTParser& Parser;
+		ASTCxxParser& Parser;
 		ASTTokenIndex Position;
 		operator ASTTokenIndex() { return Position; }
 	};
 
-	ASTParser() {}
-	ASTParser(Tokenizer& fromTokenizer);
+	ASTCxxParser() {}
+	ASTCxxParser(CxxTokenizer& fromTokenizer);
 	
 	bool Verbose = false;
 	bool IsUTF8 = false;
@@ -79,8 +79,8 @@ protected:
 	bool ParseArgumentAttribute(ASTPosition &position, std::pair<ASTTokenIndex, ASTTokenIndex>& outTokenStream);
 
 	bool ParseClassConstructorDestructor(ASTNode* parent, ASTPosition &position);
-	bool ParsePointerReferenceSymbol(ASTPosition &position, std::vector<Token> &pointerTokens, std::vector<Token> &pointerModifierTokens );
-	bool ParseSpecificScopeInner(ASTPosition& cposition, std::vector<ASTTokenIndex> &insideBracketTokens, Token::Type tokenTypeL, Token::Type tokenTypeR, bool(*filterAllows)(Token& token) /*= &ASTPosition::FilterWhitespaceComments*/);
+	bool ParsePointerReferenceSymbol(ASTPosition &position, std::vector<CxxToken> &pointerTokens, std::vector<CxxToken> &pointerModifierTokens );
+	bool ParseSpecificScopeInner(ASTPosition& cposition, std::vector<ASTTokenIndex> &insideBracketTokens, CxxToken::Type tokenTypeL, CxxToken::Type tokenTypeR, bool(*filterAllows)(CxxToken& token) /*= &ASTPosition::FilterWhitespaceComments*/);
 	bool ParseNTypeBase(ASTPosition &position, ASTType* typeNode);
 	bool ParseNTypeIdentifier(ASTPosition &position, ASTType* typeNode);
 	bool ParseNTypeFunctionPointer(ASTPosition &position, ASTType* typeNode);
@@ -93,8 +93,8 @@ protected:
 	bool ParseEndOfStream(ASTNode* parent, ASTPosition& position);
 	
 	bool ParseDeclarationSubArguments(ASTPosition &position, ASTNode* parent);
-	bool ParseDeclarationSubArgumentsScoped(ASTPosition &position, ASTNode* parent, Token::Type leftScope, Token::Type rightScope);
-	bool ParseDeclarationSubArgumentsScopedWithNonTypes(ASTPosition &cposition, ASTNode* parent, Token::Type leftScope, Token::Type rightScope);
+	bool ParseDeclarationSubArgumentsScoped(ASTPosition &position, ASTNode* parent, CxxToken::Type leftScope, CxxToken::Type rightScope);
+	bool ParseDeclarationSubArgumentsScopedWithNonTypes(ASTPosition &cposition, ASTNode* parent, CxxToken::Type leftScope, CxxToken::Type rightScope);
 
 	bool ParseExtensionAnnotation(ASTNode* parent, ASTPosition& cposition);
 	bool ParseExtensionAnnotationContent(ASTTokenNode* ndAnnotationRoot, ASTPosition &position);

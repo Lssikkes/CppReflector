@@ -1,6 +1,6 @@
-#include "modules.h"
-#include "astProcessor.h"
-#include "tools.h"
+#include "../modules.h"
+#include "../astProcessor.h"
+#include "../tools.h"
 
 #include <windows.h>	// dword etc
 #include <stdlib.h>		// fread Win32
@@ -8,12 +8,12 @@
 class ModuleWildcard : public IModule
 {
 public:
-	virtual void Execute(tools::CommandLineParser& cmdOpts, ASTNode* rootNode, std::vector<std::unique_ptr<ASTParser>>& parsers)
+	virtual void Execute(tools::CommandLineParser& cmdOpts, ASTNode* rootNode, std::vector<std::unique_ptr<ASTCxxParser>>& parsers)
 	{
 		std::vector<std::string> wc_list;
 
 		fprintf(stderr, "********************* WILDCARD ***********************\n");
-		unsigned int i = 0;
+		size_t i = 0;
 		while (i < cmdOpts.names.size())
 		{
 			std::string ext;
@@ -24,17 +24,17 @@ public:
 			if (cmdOpts.names[i].find("*") != std::string::npos)
 			{
 				// parse this entry  1* == non-recursive
-				unsigned int wp = cmdOpts.names[i].rfind("*.");
+				size_t wp = cmdOpts.names[i].rfind("*.");
 				ext = cmdOpts.names[i].substr(wp + 2);
 
 				// check if recurse				
-				unsigned int prev = wp - 1;
+				size_t prev = wp - 1;
 				if (prev >= 0 && prev < cmdOpts.names[i].length())
 					if (cmdOpts.names[i][prev] == '*')
 						recurse = true;			
 
 				// add anything before * thats not an asterisk
-				unsigned int sp = cmdOpts.names[i].rfind('/');
+				size_t sp = cmdOpts.names[i].rfind('/');
 				if (sp == std::string::npos)
 					sp = cmdOpts.names[i].rfind('\\');
 				if (sp != std::string::npos)
@@ -47,7 +47,7 @@ public:
 				parseDirForExt(path, ext, recurse, wc_list);
 
 				// DEBUG PRINT ALL THE THINGS
-				fprintf(stdout, "LOOKING IN:> %s recurse:%d\n", path.c_str(), (int)recurse);
+				fprintf(stderr, "LOOKING IN:> %s recurse:%d\n", path.c_str(), (int)recurse);
 			}
 			else
 			{
@@ -60,7 +60,7 @@ public:
 			cmdOpts.names.push_back(wc_list[i]);
 
 			// DEBUG PRINT ALL THE THINGS
-			fprintf(stdout, "FILE> %s\n", wc_list[i].c_str());
+			fprintf(stderr, "FILE> %s\n", wc_list[i].c_str());
 		}
 	}
 
@@ -76,7 +76,7 @@ protected:
 
 		// TODO: check if last char is a /, if not add one.
 		std::string path = inDirname + "*";
-		unsigned int nLen = inDirname.length();
+		size_t nLen = inDirname.length();
 		hFind = FindFirstFileA(path.c_str(), &ffd);
 
 		if (INVALID_HANDLE_VALUE == hFind)
@@ -133,7 +133,7 @@ protected:
 	std::string FileExt(const std::string& inFilename)
 	{
 		// find last point. if none, theres no extention.
-		unsigned int pointPos = inFilename.rfind('.');
+		size_t pointPos = inFilename.rfind('.');
 		if (pointPos == std::string::npos)
 			return "";
 

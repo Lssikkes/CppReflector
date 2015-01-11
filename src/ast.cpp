@@ -50,6 +50,107 @@ void ASTNode::StealNodesFrom(ASTNode* node)
 	node->m_children.clear();
 }
 
+const char* ASTNode::GetTypeString() const
+{
+	switch (type)
+	{
+		case ASTNode::Type::Root: return "ROOT";
+		case ASTNode::Type::File: return "FILE";
+		case ASTNode::Type::Private: return "PRIVATE";
+		case ASTNode::Type::Public: return "PUBLIC";
+		case ASTNode::Type::Protected: return "PROTECTED";
+		case ASTNode::Type::Class: return "CLASS";
+		case ASTNode::Type::Struct: return "STRUCT";
+		case ASTNode::Type::Union: return "UNION";
+		case ASTNode::Type::UnionFwdDcl: return "UNION_FORWARD_DECLARATION";
+		case ASTNode::Type::StructFwdDcl: return "STRUCT_FORWARD_DECLARATION";
+		case ASTNode::Type::ClassFwdDcl: return "CLASS_FORWARD_DECLARATION";
+		case ASTNode::Type::Instances: return "INSTANCES";
+		case ASTNode::Type::DclSub: return "DCL_SUB";
+		case ASTNode::Type::Template: return "TEMPLATE";
+		case ASTNode::Type::TemplateArgs: return "TEMPLATE_ARGS";
+		case ASTNode::Type::TemplateArg: return "TEMPLATE_ARG";
+		case ASTNode::Type::TemplateContent: return "TEMPLATE_CONTENT";
+		case ASTNode::Type::Namespace: return "NAMESPACE";
+		case ASTNode::Type::NamespaceUsing: return "USING_NAMESPACE";
+		case ASTNode::Type::Using: return "USING";
+		case ASTNode::Type::Friend: return "FRIEND";
+		case ASTNode::Type::Typedef: return "TYPEDEF";
+		case ASTNode::Type::TypedefHead: return "TYPEDEF_HEAD";
+		case ASTNode::Type::TypedefSub: return "TYPEDEF_SUB";
+		case ASTNode::Type::Enum: return "ENUM";
+		case ASTNode::Type::EnumClass: return "ENUM_CLASS";
+		case ASTNode::Type::EnumDef: return "ENUM_DEFINITION";
+		case ASTNode::Type::Init: return "INIT";
+		case ASTNode::Type::Parent: return "INHERIT_FROM";
+		case ASTNode::Type::Inherit: return "INHERIT";
+		case ASTNode::Type::CInitFuncDcl: return "DCL_FUNC_CINIT";
+		case ASTNode::Type::CInitVar: return "CINIT_VAR";
+		case ASTNode::Type::CInitSet: return "CINIT_SET";
+		case ASTNode::Type::TemplateArgDcl: return "DCL_TEMPLATE_ARGS";
+		case ASTNode::Type::FuncPtrArgDcl: return "DCL_FPTR_ARGS";
+		case ASTNode::Type::CtorArgsDcl: return "DCL_CTOR_ARGS";
+		case ASTNode::Type::FuncArgDcl: return "DCL_FUNC_ARGS";
+		case ASTNode::Type::FuncModDcl: return "DCL_FUNC_MODS";
+		case ASTNode::Type::Modifier: return "MODIFIER";
+		case ASTNode::Type::FuncDcl: return "DCL_FUNC_DECLARATION";
+		case ASTNode::Type::DclHead: return "DCL_HEAD";
+		case ASTNode::Type::VarArgDcl: return "DCL_VARARGS";
+		case ASTNode::Type::ArgDcl: return "DCL_ARG";
+		case ASTNode::Type::ArgNonTypeDcl: return "DCL_ARG_NONTYPE";
+		case ASTNode::Type::CtorArgDcl: return "DCL_CTOR_ARG";
+		case ASTNode::Type::AntFwd: return "ANNOTATION_FWD";
+		case ASTNode::Type::AntBack: return "ANNOTATION_BACK";
+		case ASTNode::Type::AntArgs: return "ANT_ARGS";
+		case ASTNode::Type::AntArg: return "ANT_ARG";
+		default:
+		{
+			return "UNKNOWN";
+		}
+	}
+}
+
+std::vector<ASTNode*> ASTNode::GatherAnnotations() const
+{
+	std::vector<ASTNode*> ret;
+	i_InnerGatherAnnotations(ret);
+	return ret;
+}
+
+void ASTNode::i_InnerGatherAnnotations(std::vector<ASTNode*>& list) const
+{
+	auto* prev = GetPreviousSibling();
+	while (prev && prev->GetType() == Type::AntFwd)
+	{
+		list.insert(list.begin(), prev);
+		prev = prev->GetPreviousSibling();
+	}
+
+	auto* next = GetNextSibling();
+	while (next && next->GetType() == Type::AntBack)
+	{
+		list.push_back(next);
+		next = next->GetNextSibling();
+	}
+
+	auto* parent = GetParent();
+	if (parent)
+	{
+		switch (parent->GetType())
+		{
+			case ASTNode::Type::Typedef:
+			case ASTNode::Type::TypedefHead:
+			case ASTNode::Type::Template:
+			case ASTNode::Type::TemplateContent:
+			case ASTNode::Type::DclHead:
+				parent->i_InnerGatherAnnotations(list);
+				break;
+			default:
+				break;
+		}
+	}
+}
+
 std::string ASTPointerType::ToString()
 {
 	std::string ret;
@@ -66,24 +167,23 @@ std::string ASTType::ToString()
 {
 	std::string ret;
 
-	if (head != 0)
+	/*if (head != 0)
 	{
-		ASTType t(tokenSource);
-		t.MergeData(this);
-		t.MergeData(head);
+		GetHeadSub();
+
 		return t.ToString();
-	}
+	}*/
 
 	// type modifiers
 	ret += ToModifiersString();
 
 	// namespace symbol
-	if (typeName.size() > 0 &&
+	/*if (typeName.size() > 0 &&
 		tokenSource->Tokens[typeName[0]].TokenType != Token::Type::BuiltinType &&
 		tokenSource->Tokens[typeName[0]].TokenType != Token::Type::Void)
 	{
 		ret += "::";
-	}
+	}*/
 
 	// name symbols
 	ret += ToNameString();
@@ -129,6 +229,10 @@ std::string ASTType::ToString()
 
 	// function arguments
 	ret += ToArgumentsString();
+	tools::appendSpaceIfNeeded(ret);
+
+	// function modifiers
+	ret += ToFunctionModifiersString();
 
 	// remove trailing space
 	if (ret.size() > 0 && ret.back() == ' ')
@@ -176,23 +280,39 @@ std::string ASTType::ToModifiersString()
 	return ret;
 }
 
+std::string ASTType::ToFunctionModifiersString()
+{
+	if (ndFuncModifierList == 0)
+		return "";
+
+	std::string ret;
+	for (auto it : ndFuncModifierList->Children())
+	{
+		ret += it->ToString();
+		ret += " ";
+	}
+	if (ret.size() > 0)
+		ret.pop_back(); // remove trailing space
+	return ret;
+}
+
 std::string ASTType::ToNameString()
 {
 	std::string ret;
 	for (size_t i = 0; i < typeName.size(); i++)
 	{
-		Token* nextToken = 0;
+		CxxToken* nextToken = 0;
 		if (i + 1 < typeName.size())
 			nextToken = &tokenSource->Tokens[typeName[i + 1]];
 
 		ret += tokenSource->Tokens[typeName[i]].TokenData;
-		if (tokenSource->Tokens[typeName[i]].TokenType != Token::Type::Doublecolon)
+		if (tokenSource->Tokens[typeName[i]].TokenType != CxxToken::Type::Doublecolon)
 		{
-			if (nextToken && nextToken->TokenType == Token::Type::Keyword)
+			if (nextToken && nextToken->TokenType == CxxToken::Type::Keyword)
 				ret.push_back(' ');
-			else if (nextToken && nextToken->TokenType == Token::Type::BuiltinType)
+			else if (nextToken && nextToken->TokenType == CxxToken::Type::BuiltinType)
 				ret.push_back(' ');
-			else if (nextToken && nextToken->TokenType == Token::Type::Void)
+			else if (nextToken && nextToken->TokenType == CxxToken::Type::Void)
 				ret.push_back(' ');
 
 		}
@@ -287,7 +407,7 @@ std::string ASTType::ToArgumentsString()
 			ASTType* t = dynamic_cast<ASTType*>(it);
 			if (t == 0)
 			{
-				if (it->GetTypeStr() == "DCL_VARARGS")
+				if (it->GetType() == ASTNode::Type::VarArgDcl)
 					ret += "...";
 				continue; // skip non-types
 			}

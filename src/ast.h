@@ -1,13 +1,13 @@
 #pragma once
 
 #include <vector>
-#include "tokenizer.h"
+#include "cxxTokenizer.h"
 #include <memory>
 
 class ASTTokenSource
 {
 public:
-	std::vector<Token> Tokens;
+	std::vector<CxxToken> Tokens;
 };
 
 typedef size_t ASTTokenIndex;
@@ -15,7 +15,7 @@ typedef size_t ASTTokenIndex;
 class ASTNode
 {
 public:
-	enum Type
+	enum class Type
 	{
 		Root,
 		File,
@@ -84,21 +84,22 @@ public:
 	void StealNodesFrom(ASTNode* node);
 	const std::vector<ASTNode*>& Children() const { return m_children; }
 	std::vector<ASTNode*> GatherChildrenRecursively() const;
+	std::vector<ASTNode*> GatherAnnotations() const;
 
-	virtual const std::string& GetTypeStr() const { return typeStr; }
+	virtual const char* GetTypeString() const;
 	virtual const ASTNode::Type GetType() const { return type; };
 
 	ASTNode* GetParent() const { return parent; }
 	ASTNode* GetNextSibling() const;
 	ASTNode* GetPreviousSibling() const;
 	
-	void SetType(const std::string& inTypeStr, ASTNode::Type inType) { typeStr = inTypeStr; type = inType; }
+	void SetType( ASTNode::Type inType) { type = inType; }
 
 	void RebuildParentIndices();
 
 	virtual std::string ToString() { return ""; }
 protected:
-	std::string typeStr;
+	void i_InnerGatherAnnotations(std::vector<ASTNode*>& list) const;
 	ASTNode::Type type;
 	
 	ASTNode* parent;
@@ -120,8 +121,8 @@ public:
 	};
 
 	Type pointerType;
-	Token pointerToken;
-	std::vector<Token> pointerModifiers;
+	CxxToken pointerToken;
+	std::vector<CxxToken> pointerModifiers;
 
 	std::string ToString();
 };
@@ -133,7 +134,7 @@ public:
 	const std::vector<std::string>& Data() const { return data; }
 	virtual std::string ToString();
 protected:
-	friend class ASTParser;
+	friend class ASTCxxParser;
 	std::vector<std::string> data;
 };
 
@@ -149,7 +150,7 @@ public:
 class ASTType : public ASTNode
 {
 public:
-	ASTType(ASTTokenSource* src) : tokenSource(src) { SetType("TYPE", ASTNode::Type::VarType); }
+	ASTType(ASTTokenSource* src) : tokenSource(src) { SetType(ASTNode::Type::VarType); }
 	ASTTokenSource* tokenSource;
 	ASTType* head = 0;
 	
@@ -164,12 +165,21 @@ public:
 	std::vector<ASTTokenIndex> typeBitfieldTokens;
 	std::vector<ASTPointerType> typePointers;
 	std::vector<ASTPointerType> typeIdentifierScopedPointers;
-	std::vector<std::vector<ASTTokenIndex>> typeArrayTokens;
+	std::vector< std::vector<ASTTokenIndex> > typeArrayTokens;
 	std::vector<int> typeTemplateIndices;
 	
 	std::vector<int> typeFunctionPointerArgumentIndices;
 
 	virtual std::string ToString();
+
+	bool IsDeclarationHead() { return head != 0; }
+	ASTType CombineWithHead()
+	{
+		ASTType t(tokenSource);
+		t.MergeData(this);
+		t.MergeData(head);
+		return t;
+	}
 
 	std::string ToPointersString();
 	std::string ToArgumentsString();
@@ -180,6 +190,7 @@ public:
 	std::string ToPointerIdentifierScopedString();
 	std::string ToNameString();
 	std::string ToModifiersString();
+	std::string ToFunctionModifiersString();
 	std::string ToArrayTokensString();
 
 	void MergeData(ASTType* other);

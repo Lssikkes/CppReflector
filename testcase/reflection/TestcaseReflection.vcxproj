@@ -62,7 +62,7 @@
       </Command>
     </PreBuildEvent>
     <CustomBuildStep>
-      <Command>$(SolutionDir)..\..\CppReflector.exe tests.h --module=wildcard --module=cpp_parser --module=print_structure</Command>
+      <Command>$(SolutionDir)..\..\CppReflector.exe *.h --module=wildcard --module=cpp_parser --module=print_structure</Command>
     </CustomBuildStep>
     <CustomBuildStep>
       <Message>Reflecting</Message>
@@ -92,9 +92,12 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="reflector.cpp" />
     <ClCompile Include="tests.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="reflector.h" />
+    <ClInclude Include="simple.h" />
     <ClInclude Include="tests.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

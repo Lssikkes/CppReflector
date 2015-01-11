@@ -1,0 +1,26 @@
+--------------------------------------------------------
+Module: CPP Parser
+--------------------------------------------------------
+
+* Implements module(s):
+cpp_parser, cpp_parser_mt
+
+* Primary maintainer:
+Leroy Sikkes
+
+* Contributors:
+Daniel Wustenhoff
+
+* Purpose:
+Parses a (preprocessed) C++ file (header or source file), and extracts an AST for each file.
+
+* Usage:
+Either use cpp_parser (single-threaded) or cpp_parser_mt (multi-threaded), and all followed files will be processed by the c++ parser module. 
+File extension is not significant, and is ignored.
+
+* Documentation:
+The MT variant is multi-threaded, and will be significantly faster on multi-core machines. 
+However, parse order is not guaranteed, and the tree will be reordered semi-randomly.
+(is actually ordered by the finishing time of parsing when multiple files are parsed concurrently)
+Most of the testing occurs with the non MT variant, for ease of debugging, and consistency.
+Code resides in cxxTokenizer and cxxAstParser.

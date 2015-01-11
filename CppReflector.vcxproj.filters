@@ -1,0 +1,107 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="docs">
+      <UniqueIdentifier>{CECA957C-BA01-970D-63EE-7C104F04130F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src">
+      <UniqueIdentifier>{2DAB880B-99B4-887C-2230-9F7C8E38947C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\modules">
+      <UniqueIdentifier>{15ADC5DD-8162-3ED3-0A57-38AA760B35D7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="tests">
+      <UniqueIdentifier>{78756B10-E489-93C1-AD0B-372119DF8FF2}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="docs\module_cpp_parser.txt">
+      <Filter>docs</Filter>
+    </None>
+    <None Include="docs\module_debug.txt">
+      <Filter>docs</Filter>
+    </None>
+    <None Include="docs\module_reflector.txt">
+      <Filter>docs</Filter>
+    </None>
+    <None Include="docs\module_wildcard.txt">
+      <Filter>docs</Filter>
+    </None>
+    <None Include="tests\managers_input.xcpp">
+      <Filter>tests</Filter>
+    </None>
+    <None Include="tests\pthread.xh">
+      <Filter>tests</Filter>
+    </None>
+    <None Include="tests\rigidbody.xh">
+      <Filter>tests</Filter>
+    </None>
+    <None Include="tests\stdio.xh">
+      <Filter>tests</Filter>
+    </None>
+    <None Include="tests\test1.xh">
+      <Filter>tests</Filter>
+    </None>
+    <None Include="tests\test2.xh">
+      <Filter>tests</Filter>
+    </None>
+    <None Include="tests\test3.xh">
+      <Filter>tests</Filter>
+    </None>
+    <None Include="tests\testSelf.xh">
+      <Filter>tests</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\ast.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\astProcessor.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\cxxAstParser.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\cxxTokenizer.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\modules.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\tools.h">
+      <Filter>src</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\ast.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\astProcessor.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\cxxAstParser.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\cxxTokenizer.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\main.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\modules\moduleCppParser.cpp">
+      <Filter>src\modules</Filter>
+    </ClCompile>
+    <ClCompile Include="src\modules\moduleWildcard.cpp">
+      <Filter>src\modules</Filter>
+    </ClCompile>
+    <ClCompile Include="src\modules.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\tools.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\modules\moduleDebug.cpp">
+      <Filter>src\modules</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>

@@ -1,15 +1,16 @@
+#pragma once
 #include <vector>
 #include <map>
 #include <memory>
 
 namespace tools { struct CommandLineParser; }
 class ASTNode;
-class ASTParser;
+class ASTCxxParser;
 
 class IModule
 {
 public:
-	virtual void Execute(tools::CommandLineParser& cmdOpts, ASTNode* rootNode, std::vector<std::unique_ptr<ASTParser>>& parsers) = 0;
+	virtual void Execute(tools::CommandLineParser& cmdOpts, ASTNode* rootNode, std::vector<std::unique_ptr<ASTCxxParser>>& parsers) = 0;
 };
 
 class ModuleRegistration

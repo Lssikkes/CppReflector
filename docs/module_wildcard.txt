@@ -1,0 +1,22 @@
+--------------------------------------------------------
+Module: Wildcard
+--------------------------------------------------------
+
+* Implements module(s):
+wildcard
+
+* Primary maintainer:
+Daniel Wustenhoff
+
+* Contributors:
+
+
+* Purpose:
+Supporting wildcards on environments that don't have support for wildcards out of the box (WIN32 only for now).
+Also extending wildcard support with recursive search.
+
+* Usage:
+Enable module, and all paths containing * (non recursive match) or ** (recursive match) will be expanded.
+For example: 
+src/**.cpp will look recursively in src folder for all files ending in ".cpp".
+include/*.h will look non-recursively in include for all files ending in ".h".
