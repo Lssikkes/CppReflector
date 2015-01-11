@@ -16,3 +16,6 @@
 *.vsp
 *.psess
 /obj/Debug/modules.o
+CppReflector.sln
+CppReflector.vcxproj
+CppReflector.vcxproj.filters
