@@ -89,7 +89,6 @@ const char* ASTNode::GetTypeString() const
 		case ASTNode::Type::CInitSet: return "CINIT_SET";
 		case ASTNode::Type::TemplateArgDcl: return "DCL_TEMPLATE_ARGS";
 		case ASTNode::Type::FuncPtrArgDcl: return "DCL_FPTR_ARGS";
-		case ASTNode::Type::CtorArgsDcl: return "DCL_CTOR_ARGS";
 		case ASTNode::Type::FuncArgDcl: return "DCL_FUNC_ARGS";
 		case ASTNode::Type::FuncModDcl: return "DCL_FUNC_MODS";
 		case ASTNode::Type::Modifier: return "MODIFIER";
@@ -98,6 +97,7 @@ const char* ASTNode::GetTypeString() const
 		case ASTNode::Type::VarArgDcl: return "DCL_VARARGS";
 		case ASTNode::Type::ArgDcl: return "DCL_ARG";
 		case ASTNode::Type::ArgNonTypeDcl: return "DCL_ARG_NONTYPE";
+		case ASTNode::Type::CtorArgsDcl: return "DCL_CTOR_ARGS";
 		case ASTNode::Type::CtorArgDcl: return "DCL_CTOR_ARG";
 		case ASTNode::Type::AntFwd: return "ANNOTATION_FWD";
 		case ASTNode::Type::AntBack: return "ANNOTATION_BACK";
@@ -452,5 +452,7 @@ std::string ASTDataNode::ToString()
 		ret += it;
 		ret += " ";
 	}
+	if (ret.size() > 0 && ret.back() == ' ')
+		ret.pop_back();
 	return ret;
 }

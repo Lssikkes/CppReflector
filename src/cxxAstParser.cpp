@@ -61,7 +61,7 @@ template <class T, class T2> void Parse_ScopeAware(ASTCxxParser::ASTPosition& po
 		}
 
 		emitFunction(position);
-		position.Increment();
+		position.Increment(1, filterAllows);
 	}
 	return;
 }
