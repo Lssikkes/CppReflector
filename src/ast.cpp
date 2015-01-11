@@ -433,6 +433,17 @@ std::string ASTType::ToPointersString()
 	return ret;
 }
 
+ASTType ASTType::CombineWithHead()
+{
+	if (head == 0)
+		throw std::runtime_error("Type has no head. No combine is needed.");
+
+	ASTType t(tokenSource);
+	t.MergeData(this);
+	t.MergeData(head);
+	return t;
+}
+
 
 
 std::string ASTTokenNode::ToString()

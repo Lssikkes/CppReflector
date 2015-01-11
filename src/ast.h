@@ -173,13 +173,7 @@ public:
 	virtual std::string ToString();
 
 	bool IsDeclarationHead() { return head != 0; }
-	ASTType CombineWithHead()
-	{
-		ASTType t(tokenSource);
-		t.MergeData(this);
-		t.MergeData(head);
-		return t;
-	}
+	ASTType CombineWithHead();
 
 	std::string ToPointersString();
 	std::string ToArgumentsString();

@@ -91,12 +91,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="generated\reflector.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="reflector.cpp" />
+    <ClCompile Include="reflectorData.cpp" />
     <ClCompile Include="tests.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="reflector.h" />
+    <ClInclude Include="generated\reflector.h" />
     <ClInclude Include="simple.h" />
     <ClInclude Include="tests.h" />
   </ItemGroup>
