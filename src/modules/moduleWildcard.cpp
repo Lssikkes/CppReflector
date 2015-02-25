@@ -81,7 +81,7 @@ protected:
 
 		if (INVALID_HANDLE_VALUE == hFind)
 		{
-			fprintf(stderr, "file system error while parsing directory.");
+			fprintf(stderr, "Warning: File system error while parsing directory.");
 			return filenames;
 		}
 
@@ -109,7 +109,7 @@ protected:
 
 		if (INVALID_HANDLE_VALUE == hFind)
 		{
-			fprintf(stderr, "file system error while parsing directory.");
+			fprintf(stderr, "Warning: File system error while parsing directory.");
 			return folders;
 		}
 

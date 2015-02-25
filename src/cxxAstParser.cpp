@@ -93,6 +93,7 @@ static std::string CombineTokens(ASTTokenSource* source, std::vector<ASTTokenInd
 
 ASTCxxParser::ASTCxxParser(CxxTokenizer& fromTokenizer)
 {
+	m_source = fromTokenizer.Identifier;
 	int lineNumber = 1;
 	CxxToken token;
 	while (token.TokenType != CxxToken::Type::EndOfStream)
@@ -409,7 +410,7 @@ bool ASTCxxParser::ParseTemplate(ASTNode* parent, ASTPosition& cposition)
 	position.Increment();
 
 	// create template tree
-	std::unique_ptr<ASTNode> subNode(new ASTNode());
+	std::unique_ptr<ASTDataNode> subNode(new ASTDataNode());
 	subNode->SetType(ASTNode::Type::Template);
 
 	// create arguments tree
@@ -942,19 +943,6 @@ bool ASTCxxParser::ParseDeclarationHead(ASTNode* parent, ASTPosition& cposition,
 		return false;
 	}
 
-	if (position.GetToken().TokenType == CxxToken::Type::LArrow)
-	{
-		// parse template arguments
-		std::unique_ptr<ASTNode> argNode(new ASTNode());
-		if (ParseDeclarationSubArgumentsScopedWithNonTypes(position, argNode.get(), CxxToken::Type::LArrow, CxxToken::Type::RArrow) == false)
-			return false; // it must be a pointer instead? (e.g. void (*test); );
-
-		argNode->SetType(ASTNode::Type::TemplateArgDcl);
-		type->ndTemplateArgumentList = argNode.get();
-		type->AddNode(argNode.release());
-
-	}
-
 	// parse final modifier tokens if present
 	while (ParseModifierToken(position, type->typeModifiers)) {}
 
@@ -1394,7 +1382,7 @@ bool ASTCxxParser::ParseModifierToken(ASTPosition& cposition, std::vector<std::p
 
 bool ASTCxxParser::ParseNTypeBase(ASTPosition &position, ASTType* typeNode)
 {
-	std::vector<ASTTokenIndex>& typeTokens = typeNode->typeName;
+	std::vector<ASTType::ASTTokenIndexTemplated>& typeTokens = typeNode->typeName;
 	std::vector<std::pair<ASTTokenIndex, ASTTokenIndex> >& modifierTokens = typeNode->typeModifiers;
 	size_t typeWordIndex = -1;
 	while (true)
@@ -1403,24 +1391,26 @@ bool ASTCxxParser::ParseNTypeBase(ASTPosition &position, ASTType* typeNode)
 		{
 			if (typeWordIndex == -1)
 			{
-				typeTokens.push_back(position.GetTokenIndex());
+				ASTType::ASTTokenIndexTemplated tok = { position.GetTokenIndex(), 0 };
+				typeTokens.push_back(tok);
 				typeWordIndex = typeTokens.size() - 1;
 			}
 			else
 			{
 				// second occurrence of a keyword/builtintype or void keyword
-
+				
 				if (position.GetToken().TokenType == CxxToken::Type::BuiltinType)
 				{
 					// combined built in types
-					if (Tokens[typeTokens.back()].TokenData == "short" && position.GetToken().TokenData == "int")
-						typeTokens.push_back(position.GetTokenIndex());
-					else if (Tokens[typeTokens.back()].TokenData == "long" && position.GetToken().TokenData == "int")
-						typeTokens.push_back(position.GetTokenIndex());
-					else if (Tokens[typeTokens.back()].TokenData == "long" && position.GetToken().TokenData == "long")
-						typeTokens.push_back(position.GetTokenIndex());
-					else if (Tokens[typeTokens.back()].TokenData == "long" && position.GetToken().TokenData == "double")
-						typeTokens.push_back(position.GetTokenIndex());
+					if ((Tokens[typeTokens.back().Index].TokenData == "short" && position.GetToken().TokenData == "int") ||
+						(Tokens[typeTokens.back().Index].TokenData == "long" && position.GetToken().TokenData == "int") ||
+						(Tokens[typeTokens.back().Index].TokenData == "long" && position.GetToken().TokenData == "long") || 
+						(Tokens[typeTokens.back().Index].TokenData == "long" && position.GetToken().TokenData == "double"))
+					{
+						ASTType::ASTTokenIndexTemplated tok = { position.GetTokenIndex(), 0 };
+						typeTokens.push_back(tok);
+						typeWordIndex = typeTokens.size() - 1;
+					}
 					else
 						return false; // invalid type combination
 				}
@@ -1433,9 +1423,22 @@ bool ASTCxxParser::ParseNTypeBase(ASTPosition &position, ASTType* typeNode)
 		}
 		else if (ParseModifierToken(position, modifierTokens))
 			continue;
+		else if (position.GetToken().TokenType == CxxToken::Type::LArrow && typeWordIndex != -1)
+		{
+			// parse template arguments
+			std::unique_ptr<ASTNode> argNode(new ASTNode());
+			if (ParseDeclarationSubArgumentsScopedWithNonTypes(position, argNode.get(), CxxToken::Type::LArrow, CxxToken::Type::RArrow) == false)
+				return false; // it must be a pointer instead? (e.g. void (*test); );
+
+			argNode->SetType(ASTNode::Type::TemplateArgDcl);
+			typeTokens[typeWordIndex].TemplateArguments = argNode.get();
+			typeNode->AddNode(argNode.release());
+			continue;
+		}
 		else if (position.GetToken().TokenType == CxxToken::Type::Doublecolon)
 		{
-			typeTokens.push_back(position.GetTokenIndex());  // namespace support
+			ASTType::ASTTokenIndexTemplated tok = { position.GetTokenIndex(), 0 };
+			typeTokens.push_back(tok);
 			typeWordIndex = -1; // reset type word index
 		}
 		else

@@ -1,4 +1,6 @@
-﻿//@[Serializable]
+﻿vector<int>::iterator i;
+
+//@[Serializable]
 template <class T>
 class TestArray
 {

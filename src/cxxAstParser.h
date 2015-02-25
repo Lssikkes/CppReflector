@@ -40,6 +40,7 @@ public:
 
 	ASTCxxParser() {}
 	ASTCxxParser(CxxTokenizer& fromTokenizer);
+	virtual const char* SourceIdentifier() { return m_source.c_str(); }
 	
 	bool Verbose = false;
 	bool IsUTF8 = false;
@@ -48,6 +49,7 @@ public:
 
 	bool Parse(ASTNode* parent, ASTPosition& position);
 protected:
+	std::string m_source;
 	bool ParseRootParticle(ASTNode* parent, ASTPosition& position);
 	void ParseBOM(ASTPosition &position);
 

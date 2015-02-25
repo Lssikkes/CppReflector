@@ -1,5 +1,7 @@
 #pragma once
 
+// TODO: Template specialization & Partial template specialization support
+
 #include <vector>
 #include "cxxTokenizer.h"
 #include <memory>
@@ -8,6 +10,8 @@ class ASTTokenSource
 {
 public:
 	std::vector<CxxToken> Tokens;
+	virtual const char* SourceIdentifier() { return "UNKNOWN"; }
+	size_t AddToken(const CxxToken& token);
 };
 
 typedef size_t ASTTokenIndex;
@@ -84,12 +88,14 @@ public:
 	void StealNodesFrom(ASTNode* node);
 	const std::vector<ASTNode*>& Children() const { return m_children; }
 	std::vector<ASTNode*> GatherChildrenRecursively() const;
+	std::vector<ASTNode*> GatherParents() const;
 	std::vector<ASTNode*> GatherAnnotations() const;
 
 	virtual const char* GetTypeString() const;
 	virtual const ASTNode::Type GetType() const { return type; };
 
 	ASTNode* GetParent() const { return parent; }
+	
 	ASTNode* GetNextSibling() const;
 	ASTNode* GetPreviousSibling() const;
 	
@@ -150,15 +156,16 @@ public:
 class ASTType : public ASTNode
 {
 public:
+	struct ASTTokenIndexTemplated { ASTTokenIndex Index; ASTNode* TemplateArguments; };
 	ASTType(ASTTokenSource* src) : tokenSource(src) { SetType(ASTNode::Type::VarType); }
 	ASTTokenSource* tokenSource;
 	ASTType* head = 0;
-	
-	ASTNode* ndTemplateArgumentList = 0;
+
+	// Parser variables
 	ASTNode* ndFuncArgumentList = 0;
 	ASTNode* ndFuncModifierList = 0;
 	ASTNode* ndFuncPointerArgumentList = 0;
-	std::vector<ASTTokenIndex> typeName;
+	std::vector<ASTTokenIndexTemplated> typeName;
 	std::vector<ASTTokenIndex> typeIdentifier;
 	std::vector<std::pair<ASTTokenIndex, ASTTokenIndex> > typeModifiers;
 	std::vector<ASTTokenIndex> typeOperatorTokens;
@@ -167,10 +174,17 @@ public:
 	std::vector<ASTPointerType> typeIdentifierScopedPointers;
 	std::vector< std::vector<ASTTokenIndex> > typeArrayTokens;
 	std::vector<int> typeTemplateIndices;
-	
 	std::vector<int> typeFunctionPointerArgumentIndices;
 
-	virtual std::string ToString();
+	// Transfiguration variables
+	ASTNode* resolvedType = 0;
+
+	bool HasType();
+	bool HasModifier(CxxToken::Type modifierType);
+	bool IsBuiltinType();
+
+	virtual std::string ToString() { return ToString(true); }
+	std::string ToString(bool withIdentifier);
 
 	bool IsDeclarationHead() { return head != 0; }
 	ASTType CombineWithHead();
@@ -180,9 +194,9 @@ public:
 	std::string ToOperatorString();
 	std::string ToBitfieldString();
 	std::string ToIdentifierString();
-	std::string ToTemplateArgumentsString();
+	std::string ToTemplateArgumentsString(ASTNode* args);
 	std::string ToPointerIdentifierScopedString();
-	std::string ToNameString();
+	std::string ToNameString(bool includeTemplateArguments=true);
 	std::string ToModifiersString();
 	std::string ToFunctionModifiersString();
 	std::string ToArrayTokensString();

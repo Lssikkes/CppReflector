@@ -16,6 +16,9 @@
     <Filter Include="Generated">
       <UniqueIdentifier>{fc6aea97-d09a-45c1-aebd-524e9c26ba54}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Reflector">
+      <UniqueIdentifier>{6ca16436-97c4-46b5-9dc7-4ca3c8214116}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -23,9 +26,6 @@
     </ClCompile>
     <ClCompile Include="tests.cpp">
       <Filter>Header Files</Filter>
-    </ClCompile>
-    <ClCompile Include="generated\reflector.cpp">
-      <Filter>Generated</Filter>
     </ClCompile>
     <ClCompile Include="reflectorData.cpp">
       <Filter>Generated</Filter>
@@ -38,8 +38,8 @@
     <ClInclude Include="simple.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="generated\reflector.h">
-      <Filter>Generated</Filter>
+    <ClInclude Include="..\..\src\reflector\reflector.h">
+      <Filter>Reflector</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

@@ -1,66 +1,81 @@
-class BaseObject
-{
-public:
+#pragma once
 
+typedef int gciBlockOffset;
+
+struct gciBlockPool
+{
+	void* alloc=0;
 };
 
-class Texture : BaseObject
+struct gciBaseBlock
 {
-	#include "reflection_texture_inject.inl"
+	short blockType;
+	short blockLength;
 };
 
-class Mesh : BaseObject
+struct gciLockstepState: public gciBaseBlock
 {
-	#include "reflection_mesh_inject.inl"
+	gciBlockOffset bo_entity = -1;
+	long long frame = 0;
+	int indexAutoincrement = 0;
+	unsigned int randomSeed = 0;
 };
 
-namespace std
+struct gciLockstepEntity: public gciBaseBlock
 {
-	class string
-	{
-	public:
-		
-	};
-}
-
-// generated (reflection.h)
-namespace Reflection
-{
-	class Type
-	{
-	
-	};
-	template <BaseObject> Type* GetType(BaseObject& obj) 
-	{
-		// generic approach
-		Texture* t0 = dynamic_cast<Texture*>(&obj);
-		Mesh* t1 = dynamic_cast<Mesh*>(&obj);
-		if(t0)
-			return Reflection::GetType(*t0);
-		if(t1)
-			return Reflection::GetType(*t1);
-	}
-	
-	template <Texture> Type* GetType(Texture& obj) 
-	{
-		return Reflection::Type::Texture;
-	}
-	
-	template <std::string> Type* GetType(std::string& obj)
-	{
-		return Reflection::Type::Std__String;
-	}
-	
-	template <class T> Type* GetType(T&) { return nullptr; }
+	gciBlockOffset bo_next = -1;
+	gciBlockOffset bo_actuator = -1;
+	int index = -1;
+	unsigned int flags = 0;
+	float q[4];
+	float xyz[3];
 };
 
-void test()
+struct gciLockstepEntityMesh: public gciLockstepEntity
 {
-	BaseObject* obj = new Texture();
-	
-	Reflection::GetType(obj);
-	auto* objInfo = Reflection::GetType(obj);
-	auto* objInfo = Reflection::GetType(obj);
-	
-}
+	char mesh[64];
+	float scale = 1.0f;
+};
 
+struct gciLockstepEntityCustom: public gciLockstepEntity
+{
+	int customType = -1;
+	char customData[32];
+};
+
+struct gciLockstepActuator: public gciBaseBlock
+{
+	gciBlockOffset bo_next = -1;
+};
+
+struct gciLockstepActuatorPhysics: public gciLockstepActuator
+{
+	float positional_velocity[3];
+	float angular_momentum[3];
+	float mass;
+	float shapeBoxScale[3];
+	float force[3];
+	float torque[3];
+};
+
+struct gciLockstepActuatorShipControl: public gciLockstepActuator
+{
+	float forward_thrust = 0.0f;
+	float side_thrust = 0.0f;
+	float up_thrust = 0.0f;
+	float roll_thrust = 0.0f;
+	float pitch_thrust = 0.0f;
+	float yaw_thrust = 0.0f;
+};
+
+class Vector3
+{
+	float x,y,z;
+};
+
+
+struct gciLockstepActuatorFerryAI: public gciLockstepActuator
+{
+	Vector3 pos1;
+	float pos2[3];
+};

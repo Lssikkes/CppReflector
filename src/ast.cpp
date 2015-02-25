@@ -151,6 +151,21 @@ void ASTNode::i_InnerGatherAnnotations(std::vector<ASTNode*>& list) const
 	}
 }
 
+
+std::vector<ASTNode*> ASTNode::GatherParents() const
+{
+	std::vector<ASTNode*> ret;
+
+	ASTNode* parent = GetParent();
+	while (parent != 0)
+	{
+		ret.push_back(parent);
+		parent = parent->GetParent();
+	}
+	return ret;
+}
+
+
 std::string ASTPointerType::ToString()
 {
 	std::string ret;
@@ -163,15 +178,17 @@ std::string ASTPointerType::ToString()
 	return ret;
 }
 
-std::string ASTType::ToString()
+
+
+std::string ASTType::ToString(bool withIdentifier)
 {
 	std::string ret;
 
 	/*if (head != 0)
 	{
-		GetHeadSub();
+	GetHeadSub();
 
-		return t.ToString();
+	return t.ToString();
 	}*/
 
 	// type modifiers
@@ -179,18 +196,14 @@ std::string ASTType::ToString()
 
 	// namespace symbol
 	/*if (typeName.size() > 0 &&
-		tokenSource->Tokens[typeName[0]].TokenType != Token::Type::BuiltinType &&
-		tokenSource->Tokens[typeName[0]].TokenType != Token::Type::Void)
+	tokenSource->Tokens[typeName[0]].TokenType != Token::Type::BuiltinType &&
+	tokenSource->Tokens[typeName[0]].TokenType != Token::Type::Void)
 	{
-		ret += "::";
+	ret += "::";
 	}*/
 
 	// name symbols
 	ret += ToNameString();
-	tools::appendSpaceIfNeeded(ret);
-
-	// template arguments
-	ret += ToTemplateArgumentsString();
 	tools::appendSpaceIfNeeded(ret);
 
 	// pointer symbols (including pointer modifiers)
@@ -208,7 +221,8 @@ std::string ASTType::ToString()
 	tools::appendSpaceIfNeeded(ret);
 
 	// identifier
-	ret += ToIdentifierString();
+	if (withIdentifier)
+		ret += ToIdentifierString();
 
 	// function pointer suffix
 	if (!typeIdentifierScopedPointers.empty())
@@ -257,8 +271,6 @@ void ASTType::MergeData(ASTType* other)
 	typeIdentifierScopedPointers.insert(typeIdentifierScopedPointers.end(), other->typeIdentifierScopedPointers.begin(), other->typeIdentifierScopedPointers.end());
 	typeFunctionPointerArgumentIndices.insert(typeFunctionPointerArgumentIndices.end(), other->typeFunctionPointerArgumentIndices.begin(), other->typeFunctionPointerArgumentIndices.end());
 
-	if (other->ndTemplateArgumentList)
-		ndTemplateArgumentList = other->ndTemplateArgumentList;
 	if (other->ndFuncArgumentList)
 		ndFuncArgumentList = other->ndFuncArgumentList;
 	if (other->ndFuncModifierList)
@@ -296,17 +308,19 @@ std::string ASTType::ToFunctionModifiersString()
 	return ret;
 }
 
-std::string ASTType::ToNameString()
+std::string ASTType::ToNameString(bool includeTemplateArguments)
 {
 	std::string ret;
 	for (size_t i = 0; i < typeName.size(); i++)
 	{
 		CxxToken* nextToken = 0;
 		if (i + 1 < typeName.size())
-			nextToken = &tokenSource->Tokens[typeName[i + 1]];
+			nextToken = &tokenSource->Tokens[typeName[i + 1].Index];
 
-		ret += tokenSource->Tokens[typeName[i]].TokenData;
-		if (tokenSource->Tokens[typeName[i]].TokenType != CxxToken::Type::Doublecolon)
+		ret += tokenSource->Tokens[typeName[i].Index].TokenData;
+		if (includeTemplateArguments && typeName[i].TemplateArguments)
+			ret += ToTemplateArgumentsString(typeName[i].TemplateArguments);
+		if (tokenSource->Tokens[typeName[i].Index].TokenType != CxxToken::Type::Doublecolon)
 		{
 			if (nextToken && nextToken->TokenType == CxxToken::Type::Keyword)
 				ret.push_back(' ');
@@ -316,19 +330,20 @@ std::string ASTType::ToNameString()
 				ret.push_back(' ');
 
 		}
+
 	}
 	return ret;
 }
 
-std::string ASTType::ToTemplateArgumentsString()
+std::string ASTType::ToTemplateArgumentsString(ASTNode* args)
 {
 	std::string ret;
-	if (ndTemplateArgumentList)
+	if (args)
 	{
 		if (ret.size() > 0 && ret.back() == ' ')
 			ret.pop_back(); // remove trailing space
 
-		auto& children = ndTemplateArgumentList->Children();
+		auto& children = args->Children();
 		ret += "<";
 		for (auto& it : children)
 		{
@@ -336,7 +351,7 @@ std::string ASTType::ToTemplateArgumentsString()
 			if (it != children.back())
 				ret += ", ";
 		}
-		ret += "> ";
+		ret += ">";
 	}
 	return ret;
 }
@@ -444,6 +459,39 @@ ASTType ASTType::CombineWithHead()
 	return t;
 }
 
+bool ASTType::IsBuiltinType()
+{
+	for (size_t i = 0; i < typeName.size(); i++)
+	{
+		auto type = tokenSource->Tokens[typeName[i].Index].TokenType;
+		switch (type)
+		{
+		case CxxToken::Type::BuiltinType:
+		case CxxToken::Type::Void:
+			return true;
+		default:
+			return false;
+		}
+	}
+	return false;
+}
+
+bool ASTType::HasType()
+{
+	return !typeName.empty();
+}
+
+bool ASTType::HasModifier(CxxToken::Type modifierType)
+{
+	for (size_t i = 0; i < typeModifiers.size(); i++)
+	{
+		auto type = tokenSource->Tokens[typeModifiers[i].first].TokenType;
+		if (type == modifierType)
+			return true;
+	}
+	return false;
+}
+
 
 
 std::string ASTTokenNode::ToString()
@@ -465,5 +513,12 @@ std::string ASTDataNode::ToString()
 	}
 	if (ret.size() > 0 && ret.back() == ' ')
 		ret.pop_back();
+	return ret;
+}
+
+size_t ASTTokenSource::AddToken(const CxxToken& token)
+{
+	size_t ret = Tokens.size();
+	Tokens.push_back(token);
 	return ret;
 }

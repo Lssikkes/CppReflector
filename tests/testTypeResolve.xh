@@ -1,0 +1,108 @@
+﻿#include <iostream>
+
+// ** Typedefs
+/*typedef unsigned int uint;
+uint gUintVariable;*/
+
+// ** Namespaces & Nested namespaces
+namespace someNamespace
+{
+	class b
+	{
+     
+	};
+	class a
+	{
+		public: 
+		a() {  }
+		b v;
+	};
+	namespace nested
+	{
+		b t;
+		class b;
+		class b
+		{
+		int wtfbbq;
+		};
+	}
+	namespace
+	{
+	    b v2;
+	}
+	nested::b v;
+	b v2;
+}
+
+// Subclasses
+class v
+{
+	class subv
+	{
+	};
+	subv a;
+};
+
+b test0; // error: should return a warning/error
+someNamespace::b test1_1; // valid
+::someNamespace::b test1_2; // valid
+using namespace someNamespace;
+a test1; // valid
+b test2; // valid
+
+// ** Ambiguous case
+
+namespace ambi_a
+{
+	class ambi
+	{
+	};
+}
+
+namespace ambi_b
+{
+	class ambi
+	{
+	};
+}
+
+namespace ambi_c
+{
+	class ambi
+	{
+	};
+}
+
+using namespace ambi_a;
+using namespace ambi_b;
+using namespace ambi_c;
+
+ambi ambiguous_case; // error: should return a warning/error
+
+
+// ** Templates
+template <class T, class T2, int T3=10>
+class MyWrapper
+{
+	class Nested
+	{
+
+		T NestedValue;
+	};
+	Nested Test;
+	T Value;
+	T2 Value2;
+	T3 Value3;
+	T<T,T2> Value4;
+	T Func(T2 arg, int v=T3);
+};
+
+template <class T, class T2> T template_func(T2 v);
+MyWrapper<int,double, 20> template_wrapper_int;
+MyWrapper::Nested template_wrapper_int_nested;
+
+int main() {
+	// your code goes here
+	someNamespace::a v;
+	return 0;
+}

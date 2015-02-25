@@ -124,6 +124,7 @@ public:
 	void Debug();
 
 	bool WithAnnotations = true;
+	std::string Identifier;
 protected:
 	CxxTokenizer(): m_offset(0) {}
 
@@ -149,10 +150,11 @@ protected:
 class CxxStringTokenizer: public CxxTokenizer
 {
 public:
-	CxxStringTokenizer(std::string data) { Source = data; }
+	CxxStringTokenizer(std::string ident, std::string data) { Identifier = ident; Source = data; }
 protected:
 	virtual CxxTokenizer::Data PeekBytes(size_t numBytes, size_t offset = 0);
 	virtual size_t Advance(size_t numBytes);
 
 	std::string Source;
+	
 };

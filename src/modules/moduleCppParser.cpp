@@ -39,7 +39,7 @@ public:
 	void ParseFile(tools::CommandLineParser &opts, size_t i, std::vector<std::unique_ptr<ASTCxxParser>> &parsers, std::mutex &lkSuperRoot, ASTNode* rootNode)
 	{
 		fprintf(stderr, "[PARSER] Parsing file \"%s\"\n", opts.names[i].c_str());
-		CxxStringTokenizer stokenizer(tools::readFromFile(opts.names[i]));
+		CxxStringTokenizer stokenizer(opts.names[i], tools::readFromFile(opts.names[i]));
 		std::unique_ptr<ASTCxxParser> parser(new ASTCxxParser(stokenizer));
 
 		// enable verbosity
@@ -62,12 +62,12 @@ public:
 				lkSuperRoot.unlock();
 			}
 			else
-				printf("Error during parse.\n");
+				fprintf(stderr, "Error: Parsing failed.\n");
 
 		}
 		catch (std::exception e)
 		{
-			printf("Fatal error during parse (line %d): %s\n", position.GetToken().TokenLine, e.what());
+			fprintf(stderr, "Error: Fatal error during parse (line %d): %s\n", position.GetToken().TokenLine, e.what());
 		}
 	}
 
