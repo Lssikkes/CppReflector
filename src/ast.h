@@ -3,8 +3,8 @@
 // TODO: Template specialization & Partial template specialization support
 
 #include <vector>
-#include "cxxTokenizer.h"
 #include <memory>
+#include "cxxTokenizer.h"
 
 class ASTTokenSource
 {

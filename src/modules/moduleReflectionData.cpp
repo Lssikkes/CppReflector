@@ -1,6 +1,6 @@
 #include <stdio.h>
-#include "..\modules.h"
-#include "..\ast.h"
+#include "../modules.h"
+#include "../ast.h"
 #include <stdarg.h>
 
 class ModuleReflectionDataGenerator : public IModule

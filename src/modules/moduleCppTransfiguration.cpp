@@ -2,6 +2,8 @@
 #include "../astProcessor.h"
 #include "../tools.h"
 
+#include <algorithm>
+
 class ModuleCppTransfigure : public IModule
 {
 public:
@@ -301,13 +303,13 @@ public:
 				{
 					size_t offs = (((size_t)node) >> 32);
 					if (offs != 0)
-						sprintf(anon, "anon_%08X_%08X", (unsigned int)offs, (unsigned int)node);
+						sprintf(anon, "anon_%08X_%08X", (unsigned int)(size_t)offs, (unsigned int)(size_t)node);
 					else
-						sprintf(anon, "anon_%08X", (unsigned int)node);
+						sprintf(anon, "anon_%08X", (unsigned int)(size_t)node);
 				}
 				else
 				{
-					sprintf(anon, "anon_%08X", (unsigned int)node);
+					sprintf(anon, "anon_%08X", (unsigned int)(size_t)node);
 
 				}
 				node->AddData(anon);
@@ -329,13 +331,13 @@ public:
 				{
 					size_t offs = (((size_t)node) >> 32);
 					if (offs != 0)
-						sprintf(anon, "$tmpl_%08X_%08X", (unsigned int)offs, (unsigned int)node);
+						sprintf(anon, "$tmpl_%08X_%08X", (unsigned int)(size_t)offs, (unsigned int)(size_t)node);
 					else
-						sprintf(anon, "$tmpl_%08X", (unsigned int)node);
+						sprintf(anon, "$tmpl_%08X", (unsigned int)(size_t)node);
 				}
 				else
 				{
-					sprintf(anon, "$tmpl_%08X", (unsigned int)node);
+					sprintf(anon, "$tmpl_%08X", (unsigned int)(size_t)node);
 
 				}
 				node->AddData(anon);

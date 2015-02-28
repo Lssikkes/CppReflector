@@ -1,3 +1,4 @@
+#ifdef WIN32
 #include "../modules.h"
 #include "../astProcessor.h"
 #include "../tools.h"
@@ -174,3 +175,4 @@ protected:
 };
 
 static ModuleRegistration gModulePrintAST("wildcard", new ModuleWildcard());
+#endif

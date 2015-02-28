@@ -27,7 +27,7 @@ newoption
 
 -- A solution contains projects, and defines the available configurations
 solution "CppReflector"
-   platforms { "x32", "x64"}
+   platforms { "x64", "x32"}
    configurations { "Debug", "Release" }
  
    -- A project defines one build target
